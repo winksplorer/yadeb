@@ -6,6 +6,8 @@ import (
 	"os"
 	"slices"
 	"strings"
+
+	"github.com/tidwall/gjson"
 )
 
 func cmdInstall() int {
@@ -52,6 +54,21 @@ func cmdInstall() int {
 		}
 
 		fmt.Printf("user: %s\nrepo: %s\n", user, repo)
+
+		releaseJson, err := githubGetReleases(user, repo)
+		if err != nil {
+			fmt.Println("yadeb: couldn't get github releases:", err.Error())
+			return 1
+		}
+
+		fmt.Println(gjson.Get(releaseJson, "0.assets.#"))
+
+		a, _ := githubGetCandidates(releaseJson)
+
+		for key, val := range a {
+			fmt.Printf("Key: %s, Value: %s\n", key, val)
+		}
+
 	default:
 		fmt.Printf("yadeb: unknown source domain (%s)\n", u.Host)
 		return 2

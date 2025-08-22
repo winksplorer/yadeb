@@ -16,6 +16,7 @@ endif
 .PHONY: all install
 
 all:
+	$(GO) mod tidy
 	$(GO) build -o $(APP) $(GOFLAGS) -ldflags="$(GO_LDFLAGS)"
 
 install:
