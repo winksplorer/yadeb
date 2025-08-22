@@ -19,9 +19,9 @@ func main() {
 	switch os.Args[1] {
 	case "-v", "--version":
 		fmt.Printf("yadeb v%s (built on %s)\n", Version, BuildDate)
-	case "help", "-h", "--help":
-		helpMenu()
-	case "install", "remove", "purge", "upgrade", "upgrade-all", "list", "pin", "selfhost":
+	case "install":
+		os.Exit(cmdInstall())
+	case "remove", "purge", "upgrade", "upgrade-all", "list", "pin", "selfhost":
 		fmt.Println("not implemented")
 		os.Exit(2)
 	default:
