@@ -8,8 +8,6 @@ import (
 	"slices"
 	"strings"
 	"syscall"
-
-	"github.com/tidwall/gjson"
 )
 
 func cmdInstall() int {
@@ -45,66 +43,11 @@ func cmdInstall() int {
 	// decide what to do based on domain
 	switch u.Host {
 	case "github.com":
-		pathParts := strings.Split(u.Path, "/")
-		if len(pathParts) < 3 {
-			fmt.Println("yadeb: invalid github repo link (not enough path parts)")
-			return 2
-		}
-
-		user := pathParts[1]
-		repo := pathParts[2]
-
-		if user == "" || repo == "" {
-			fmt.Println("yadeb: invalid github repo link (empty user or repo)")
-			return 2
-		}
-
-		releaseJson, err := githubGetReleases(user, repo)
-		if err != nil {
-			fmt.Println("yadeb: couldn't get github releases:", err.Error())
-			return 1
-		}
-
-		if gjson.Get(releaseJson, "0.assets.#").Int() == 0 {
-			fmt.Println("yadeb: requested package has no releases available")
-			return 1
-		}
-
-		candidates, _ := githubGetCandidates(releaseJson)
-
-		if err := filterCandidates(candidates); err != nil {
-			fmt.Println("yadeb:", err.Error())
-			return 1
-		}
-
-		b64, err := randomBase64(16)
-		if err != nil {
-			fmt.Println("yadeb: couldn't generate tmp id:", err.Error())
-			return 1
-		}
-
-		tempDir := "/tmp/yadeb-" + b64
-
-		if err := os.Mkdir(tempDir, 0666); err != nil {
-			fmt.Println("yadeb: couldn't generate tmp folder:", err.Error())
-			return 1
-		}
-
-		for _, v := range candidates {
-			if err := downloadFile(v, fmt.Sprintf("%s/%s", tempDir, v[strings.LastIndex(v, "/")+1:])); err != nil {
-				fmt.Println("yadeb: couldn't download selected candidate:", err.Error())
-				return 1
-			}
-
-			break
-		}
-
+		return githubCmdInstall(u)
 	default:
 		fmt.Printf("yadeb: unknown source domain (%s)\n", u.Host)
 		return 2
 	}
-
-	return 0
 }
 
 func filterCandidates(candidates map[string]string) error {
