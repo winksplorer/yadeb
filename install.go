@@ -61,11 +61,19 @@ func cmdInstall() int {
 			return 1
 		}
 
-		fmt.Println(gjson.Get(releaseJson, "0.assets.#"))
+		if gjson.Get(releaseJson, "0.assets.#").Int() == 0 {
+			fmt.Println("yadeb: requested package has no releases available")
+			return 1
+		}
 
-		a, _ := githubGetCandidates(releaseJson)
+		candidates, _ := githubGetCandidates(releaseJson)
 
-		for key, val := range a {
+		if err := filterCandidates(candidates); err != nil {
+			fmt.Println("filterCandidates:", err.Error())
+			return 1
+		}
+
+		for key, val := range candidates {
 			fmt.Printf("Key: %s, Value: %s\n", key, val)
 		}
 
