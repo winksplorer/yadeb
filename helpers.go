@@ -1,19 +1,16 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
-	"runtime"
+	"os"
 	"strings"
 
 	"github.com/tidwall/gjson"
 )
-
-var architectureAliases = map[string][]string{
-	"amd64": {"amd64", "x86_64", "x64"},
-	"arm64": {"arm64", "aarch64", "armv8"},
-}
 
 func githubGetReleases(user, repo string) (string, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.github.com/repos/%s/%s/releases", user, repo), nil)
@@ -55,54 +52,6 @@ func githubGetCandidates(json string) (map[string]string, error) {
 	return candidates, nil
 }
 
-func filterCandidates(candidates map[string]string) error {
-	fmt.Println("filterCandidates: first iteration (*.deb)")
-	mapFilter(candidates, func(v string) bool {
-		return !strings.HasSuffix(v, ".deb")
-	})
-
-	if len(candidates) == 1 {
-		return nil
-	} else if len(candidates) == 0 {
-		return fmt.Errorf("zero candidates remaining, cannot continue")
-	}
-
-	fmt.Printf("filterCandidates: second iteration (%s)\n", runtime.GOARCH)
-
-	// match any architecture to see if they exist
-	var allArchitectures []string
-	for _, v := range architectureAliases {
-		allArchitectures = append(allArchitectures, v...)
-	}
-
-	archSpecific := false
-	for _, v := range candidates {
-		if containsAny(v, allArchitectures) {
-			archSpecific = true
-			break
-		}
-	}
-
-	if !archSpecific {
-		// TODO: ask user which one to download
-		fmt.Println("i give up")
-		return nil
-	}
-
-	// look for current architecture
-	mapFilter(candidates, func(v string) bool {
-		return !containsAny(v, architectureAliases[runtime.GOARCH])
-	})
-
-	if len(candidates) == 1 {
-		return nil
-	} else if len(candidates) == 0 {
-		return fmt.Errorf("zero candidates remaining, cannot continue")
-	}
-
-	return nil
-}
-
 // filters a string map.
 // check should return true if the item should be removed.
 func mapFilter(m map[string]string, check func(v string) bool) {
@@ -121,4 +70,49 @@ func containsAny(s string, needles []string) bool {
 		}
 	}
 	return false
+}
+
+// downloads file
+func downloadFile(href, path string) error {
+	// check if file already exists
+	if _, err := os.Stat(path); err == nil {
+		fmt.Println("already downloaded", path)
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err // ????
+	}
+
+	// get the page
+	resp, err := http.Get(href)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// create file
+	out, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	// download
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("downloaded %s to %s\n", href, path)
+	return nil
+}
+
+// generates random b64 str
+func randomBase64(length int) (string, error) {
+	numBytes := (length * 3) / 4
+	randomBytes := make([]byte, numBytes)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(randomBytes)[:length], nil
 }

@@ -6,8 +6,12 @@ import (
 )
 
 var (
-	BuildDate string = "undefined"
-	Version   string = "undefined"
+	BuildDate           string = "undefined"
+	Version             string = "undefined"
+	architectureAliases        = map[string][]string{
+		"amd64": {"amd64", "x86_64", "x64"},
+		"arm64": {"arm64", "aarch64", "armv8"},
+	}
 )
 
 func main() {

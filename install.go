@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"runtime"
 	"slices"
 	"strings"
 
@@ -38,7 +39,6 @@ func cmdInstall() int {
 	// decide what to do based on domain
 	switch u.Host {
 	case "github.com":
-		fmt.Println("it is a github link")
 		pathParts := strings.Split(u.Path, "/")
 		if len(pathParts) < 3 {
 			fmt.Println("yadeb: invalid github repo link (not enough path parts)")
@@ -52,8 +52,6 @@ func cmdInstall() int {
 			fmt.Println("yadeb: invalid github repo link (empty user or repo)")
 			return 2
 		}
-
-		fmt.Printf("user: %s\nrepo: %s\n", user, repo)
 
 		releaseJson, err := githubGetReleases(user, repo)
 		if err != nil {
@@ -73,8 +71,26 @@ func cmdInstall() int {
 			return 1
 		}
 
-		for key, val := range candidates {
-			fmt.Printf("Key: %s, Value: %s\n", key, val)
+		b64, err := randomBase64(16)
+		if err != nil {
+			fmt.Println("yadeb: couldn't generate tmp id:", err.Error())
+			return 1
+		}
+
+		tempDir := "/tmp/yadeb-" + b64
+
+		if err := os.Mkdir(tempDir, 0666); err != nil {
+			fmt.Println("yadeb: couldn't generate tmp folder:", err.Error())
+			return 1
+		}
+
+		for _, v := range candidates {
+			if err := downloadFile(v, fmt.Sprintf("%s/%s", tempDir, v[strings.LastIndex(v, "/")+1:])); err != nil {
+				fmt.Println("yadeb: couldn't download selected candidate:", err.Error())
+				return 1
+			}
+
+			break
 		}
 
 	default:
@@ -83,4 +99,52 @@ func cmdInstall() int {
 	}
 
 	return 0
+}
+
+func filterCandidates(candidates map[string]string) error {
+	fmt.Println("filterCandidates: first iteration (*.deb)")
+	mapFilter(candidates, func(v string) bool {
+		return !strings.HasSuffix(v, ".deb")
+	})
+
+	if len(candidates) == 1 {
+		return nil
+	} else if len(candidates) == 0 {
+		return fmt.Errorf("zero candidates remaining, cannot continue")
+	}
+
+	fmt.Printf("filterCandidates: second iteration (%s)\n", runtime.GOARCH)
+
+	// match any architecture to see if they exist
+	var allArchitectures []string
+	for _, v := range architectureAliases {
+		allArchitectures = append(allArchitectures, v...)
+	}
+
+	archSpecific := false
+	for _, v := range candidates {
+		if containsAny(v, allArchitectures) {
+			archSpecific = true
+			break
+		}
+	}
+
+	if !archSpecific {
+		// TODO: ask user which one to download
+		fmt.Println("i give up")
+		return nil
+	}
+
+	// look for current architecture
+	mapFilter(candidates, func(v string) bool {
+		return !containsAny(v, architectureAliases[runtime.GOARCH])
+	})
+
+	if len(candidates) == 1 {
+		return nil
+	} else if len(candidates) == 0 {
+		return fmt.Errorf("zero candidates remaining, cannot continue")
+	}
+
+	return nil
 }
