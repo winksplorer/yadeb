@@ -1,7 +1,7 @@
 # I am addicted to gmake.
 
 APP = yadeb
-VERSION = 0.1
+VERSION = 0.2
 
 PREFIX ?= /usr/local
 

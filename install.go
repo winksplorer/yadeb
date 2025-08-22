@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"syscall"
 
 	"github.com/tidwall/gjson"
 )
@@ -15,6 +16,11 @@ func cmdInstall() int {
 	if len(os.Args) <= 2 {
 		fmt.Println("yadeb: nothing to install")
 		return 2
+	}
+
+	if syscall.Geteuid() != 0 {
+		fmt.Println("yadeb: installation requires root privileges")
+		os.Exit(2)
 	}
 
 	// "common hack"
@@ -67,7 +73,7 @@ func cmdInstall() int {
 		candidates, _ := githubGetCandidates(releaseJson)
 
 		if err := filterCandidates(candidates); err != nil {
-			fmt.Println("filterCandidates:", err.Error())
+			fmt.Println("yadeb:", err.Error())
 			return 1
 		}
 
@@ -102,7 +108,7 @@ func cmdInstall() int {
 }
 
 func filterCandidates(candidates map[string]string) error {
-	fmt.Println("filterCandidates: first iteration (*.deb)")
+	fmt.Println("first iteration (*.deb)")
 	mapFilter(candidates, func(v string) bool {
 		return !strings.HasSuffix(v, ".deb")
 	})
@@ -113,7 +119,7 @@ func filterCandidates(candidates map[string]string) error {
 		return fmt.Errorf("zero candidates remaining, cannot continue")
 	}
 
-	fmt.Printf("filterCandidates: second iteration (%s)\n", runtime.GOARCH)
+	fmt.Printf("second iteration (%s)\n", runtime.GOARCH)
 
 	// match any architecture to see if they exist
 	var allArchitectures []string
