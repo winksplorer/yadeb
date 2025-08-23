@@ -90,7 +90,7 @@ func githubCmdInstall(u *url.URL) int {
 		}
 
 		fmt.Printf("Marking \"%s/%s\" as installed...", user, repo)
-		if err := MarkAsInstalled(path, v, tag); err != nil {
+		if err := markAsInstalled(path, u.String(), tag); err != nil {
 			lnAnsiError(fmt.Sprintf("Couldn't mark %s/%s as installed", user, repo), err.Error())
 			return 1
 		}

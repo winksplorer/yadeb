@@ -14,7 +14,7 @@ Yet Another .deb Fetcher
         - [X] CPU architecture
     - [X] Temp directory
     - [X] Downloading
-    - [ ] Marking as installed and keeping track
+    - [X] Marking as installed and keeping track
     - [ ] Actually installing through apt
     - [ ] Cleanup
     - [ ] Downloading specific versions

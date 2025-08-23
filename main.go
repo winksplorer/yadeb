@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 )
 
 var (
@@ -21,6 +22,16 @@ var (
 
 const (
 	doneMsg string = " \033[92mDone\033[0m"
+)
+
+type (
+	Package struct {
+		Name         string
+		Link         string
+		InstalledTag string
+		InstallDate  time.Time
+		LastUpdate   time.Time
+	}
 )
 
 func main() {

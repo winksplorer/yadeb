@@ -149,53 +149,84 @@ func createConfig() error {
 	return nil
 }
 
-func MarkAsInstalled(debFile, link, installedTag string) error {
+func markAsInstalled(debFile, link, installedTag string) error {
 	out, err := exec.Command("dpkg-deb", "--field", debFile, "Package").Output()
 	if err != nil {
 		return err
 	}
 	pkg := strings.TrimSpace(string(out))
 
+	// get base ini data
+	var cfg *ini.File
 	if _, err := os.Stat("/etc/yadeb/installed.ini"); err != nil {
 		if os.IsNotExist(err) {
-			// ini data
-			cfg := ini.Empty()
-
-			sec, err := cfg.NewSection(pkg)
-			if err != nil {
-				return err
-			}
-
-			if _, err = sec.NewKey("link", link); err != nil {
-				return err
-			}
-
-			if _, err = sec.NewKey("installedTag", installedTag); err != nil {
-				return err
-			}
-
-			if _, err = sec.NewKey("installDate", time.Now().Format("2006-01-02")); err != nil {
-				return err
-			}
-
-			if _, err = sec.NewKey("lastUpdate", time.Now().Format("2006-01-02")); err != nil {
-				return err
-			}
-
-			// save ini file
-			if err = cfg.SaveTo("/etc/yadeb/installed.ini"); err != nil {
-				return err
-			}
-
-			if err = os.Chmod("/etc/yadeb/installed.ini", 0644); err != nil {
-				return err
-			}
+			cfg = ini.Empty()
 		} else {
 			return err
 		}
 	} else {
+		cfg, err = ini.Load("/etc/yadeb/installed.ini")
+		if err != nil {
+			return err
+		}
+	}
 
+	// data
+	sec, err := cfg.NewSection(link)
+	if err != nil {
+		return err
+	}
+
+	if _, err = sec.NewKey("Package", pkg); err != nil {
+		return err
+	}
+
+	if _, err = sec.NewKey("InstalledTag", installedTag); err != nil {
+		return err
+	}
+
+	if _, err = sec.NewKey("InstallDate", time.Now().Format("2006-01-02")); err != nil {
+		return err
+	}
+
+	if _, err = sec.NewKey("LastUpdate", time.Now().Format("2006-01-02")); err != nil {
+		return err
+	}
+
+	// save ini file
+	if err = cfg.SaveTo("/etc/yadeb/installed.ini"); err != nil {
+		return err
+	}
+
+	if err = os.Chmod("/etc/yadeb/installed.ini", 0644); err != nil {
+		return err
 	}
 
 	return nil
+}
+
+func getPackage(link string) (*Package, error) {
+	if _, err := os.Stat("/etc/yadeb/installed.ini"); err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		} else {
+			return nil, err
+		}
+	}
+
+	cfg, err := ini.Load("/etc/yadeb/installed.ini")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, section := range cfg.Sections() {
+		if section.Name() == link {
+			var p Package
+			p.Link = section.Name()
+			section.MapTo(&p)
+			return &p, nil
+		}
+	}
+
+	return nil, nil
 }

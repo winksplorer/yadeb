@@ -45,6 +45,17 @@ func cmdInstall() int {
 		return 2
 	}
 
+	// error if already installed
+	p, err := getPackage(u.String())
+	if err != nil {
+		ansiError("Couldn't read installed package database:", err.Error())
+		return 1
+	}
+	if p != nil {
+		fmt.Fprintln(os.Stderr, u.String(), "is already installed")
+		return 0
+	}
+
 	// decide what to do based on domain
 	switch u.Host {
 	case "github.com":
