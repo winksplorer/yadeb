@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"gopkg.in/ini.v1"
@@ -32,12 +33,23 @@ func containsAny(s string, needles []string) bool {
 	return false
 }
 
+// \033[91mError:\033[0m {s}
+func ansiError(s ...string) {
+	fmt.Println("\033[91mError\033[0m:", strings.Join(s, " "))
+}
+
+// \n\033[91mError:\033[0m {s}
+func lnAnsiError(s ...string) {
+	fmt.Println("\n\033[91mError\033[0m:", strings.Join(s, " "))
+}
+
 // downloads file
 func downloadFile(href, path string) error {
+	fmt.Printf("Downloading %s...", filepath.Base(href))
+
 	// check if file already exists
 	if _, err := os.Stat(path); err == nil {
-		fmt.Println("already downloaded", path)
-		return nil
+		return fmt.Errorf("%s already exists", path)
 	} else if !os.IsNotExist(err) {
 		return err // ????
 	}
@@ -48,6 +60,10 @@ func downloadFile(href, path string) error {
 		return err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
 
 	// create file
 	out, err := os.Create(path)
@@ -62,7 +78,7 @@ func downloadFile(href, path string) error {
 		return err
 	}
 
-	fmt.Printf("downloaded %s to %s\n", href, path)
+	fmt.Println(doneMsg)
 	return nil
 }
 

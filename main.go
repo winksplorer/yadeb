@@ -19,6 +19,10 @@ var (
 	}
 )
 
+const (
+	doneMsg string = " \033[92mDone\033[0m"
+)
+
 func main() {
 	if len(os.Args) <= 1 {
 		helpMenu()
