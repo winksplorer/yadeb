@@ -7,8 +7,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"gopkg.in/ini.v1"
 )
@@ -115,6 +117,7 @@ func createConfigDir() error {
 func createConfig() error {
 	if _, err := os.Stat("/etc/yadeb/config.ini"); err != nil {
 		if os.IsNotExist(err) {
+			// ini data
 			cfg := ini.Empty()
 
 			sec, err := cfg.NewSection("yadeb")
@@ -130,6 +133,7 @@ func createConfig() error {
 				return err
 			}
 
+			// save ini file
 			if err = cfg.SaveTo("/etc/yadeb/config.ini"); err != nil {
 				return err
 			}
@@ -140,6 +144,57 @@ func createConfig() error {
 		} else {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func MarkAsInstalled(debFile, link, installedTag string) error {
+	out, err := exec.Command("dpkg-deb", "--field", debFile, "Package").Output()
+	if err != nil {
+		return err
+	}
+	pkg := strings.TrimSpace(string(out))
+
+	if _, err := os.Stat("/etc/yadeb/installed.ini"); err != nil {
+		if os.IsNotExist(err) {
+			// ini data
+			cfg := ini.Empty()
+
+			sec, err := cfg.NewSection(pkg)
+			if err != nil {
+				return err
+			}
+
+			if _, err = sec.NewKey("link", link); err != nil {
+				return err
+			}
+
+			if _, err = sec.NewKey("installedTag", installedTag); err != nil {
+				return err
+			}
+
+			if _, err = sec.NewKey("installDate", time.Now().Format("2006-01-02")); err != nil {
+				return err
+			}
+
+			if _, err = sec.NewKey("lastUpdate", time.Now().Format("2006-01-02")); err != nil {
+				return err
+			}
+
+			// save ini file
+			if err = cfg.SaveTo("/etc/yadeb/installed.ini"); err != nil {
+				return err
+			}
+
+			if err = os.Chmod("/etc/yadeb/installed.ini", 0644); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	} else {
+
 	}
 
 	return nil

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/tidwall/gjson"
@@ -43,8 +44,11 @@ func githubCmdInstall(u *url.URL) int {
 		return 1
 	}
 
+	// get tag
+	tag := gjson.Get(releaseJson, "0.tag_name").String()
+
 	// get and filter candidates (release files)
-	fmt.Printf("Asking GitHub for files on release %s...", gjson.Get(releaseJson, "0.tag_name").String())
+	fmt.Printf("Asking GitHub for files on release %s...", tag)
 	candidates, err := githubGetCandidates(releaseJson)
 	if err != nil {
 		lnAnsiError("Couldn't get GitHub release files:", err.Error())
@@ -78,10 +82,19 @@ func githubCmdInstall(u *url.URL) int {
 
 	// bad but it's fine (for now). downlad the remaining candidate
 	for _, v := range candidates {
-		if err := downloadFile(v, fmt.Sprintf("%s/%s", tempDir, v[strings.LastIndex(v, "/")+1:])); err != nil {
+		path := fmt.Sprintf("%s/%s", tempDir, filepath.Base(v))
+
+		if err := downloadFile(v, path); err != nil {
 			ansiError("Couldn't download selected candidate", err.Error())
 			return 1
 		}
+
+		fmt.Printf("Marking \"%s/%s\" as installed...", user, repo)
+		if err := MarkAsInstalled(path, v, tag); err != nil {
+			lnAnsiError(fmt.Sprintf("Couldn't mark %s/%s as installed", user, repo), err.Error())
+			return 1
+		}
+		fmt.Println(doneMsg)
 
 		break
 	}
