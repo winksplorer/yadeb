@@ -9,8 +9,13 @@ var (
 	BuildDate           string = "undefined"
 	Version             string = "undefined"
 	architectureAliases        = map[string][]string{
-		"amd64": {"amd64", "x86_64", "x64"},
-		"arm64": {"arm64", "aarch64", "armv8"},
+		"386":     {"i386", "i686", "ia32", "x86"},
+		"amd64":   {"amd64", "x86_64", "x86-64", "x64"},
+		"arm":     {"armhf", "armel", "armv7"}, // TODO: this is bad. armhf != armel. this WILL cause problems later. TODO!!!!
+		"arm64":   {"arm64", "aarch64", "armv8"},
+		"ppc64le": {"ppc64le", "ppc64el"},
+		"riscv64": {"riscv64", "rv64", "risc-v64"},
+		"s390x":   {"s390x"},
 	}
 )
 
