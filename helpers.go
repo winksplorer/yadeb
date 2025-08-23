@@ -250,9 +250,9 @@ func runApt(args ...string) error {
 	return nil
 }
 
-func userChown(path, username string) error {
+func aptChown(path string) error {
 	// user lookup
-	u, err := user.Lookup(username)
+	u, err := user.Lookup("_apt")
 	if err != nil {
 		return err
 	}
@@ -262,11 +262,5 @@ func userChown(path, username string) error {
 		return err
 	}
 
-	// group lookkup
-	gid, err := strconv.Atoi(u.Gid)
-	if err != nil {
-		return err
-	}
-
-	return os.Chown(path, uid, gid)
+	return os.Chown(path, uid, 0)
 }

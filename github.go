@@ -75,12 +75,12 @@ func githubCmdInstall(u *url.URL) int {
 
 	tempDir := "/tmp/yadeb-" + b64
 
-	if err := os.Mkdir(tempDir, 0644); err != nil {
+	if err := os.Mkdir(tempDir, 0755); err != nil {
 		ansiError("Couldn't create tmp folder:", err.Error())
 		return 1
 	}
 
-	if err := userChown(tempDir, "_apt"); err != nil {
+	if err := aptChown(tempDir); err != nil {
 		ansiError("Couldn't chown downloaded deb to _apt:", err.Error())
 		return 1
 	}
