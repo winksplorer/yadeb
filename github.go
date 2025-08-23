@@ -83,7 +83,7 @@ func githubCmdInstall(u *url.URL) int {
 
 // uses github api to get repo's releases
 func githubGetReleases(user, repo string) (string, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.github.com/repos/%s/%s/releases?per_page=100", user, repo), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.github.com/repos/%s/%s/releases?per_page=50", user, repo), nil)
 	if err != nil {
 		return "", err
 	}

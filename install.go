@@ -18,7 +18,12 @@ func cmdInstall() int {
 
 	if syscall.Geteuid() != 0 {
 		fmt.Println("yadeb: installation requires root privileges")
-		os.Exit(2)
+		return 2
+	}
+
+	if err := createConfigDir(); err != nil {
+		fmt.Println("yadeb: couldn't create (or check existence of) /etc/yadeb")
+		return 1
 	}
 
 	// "common hack"

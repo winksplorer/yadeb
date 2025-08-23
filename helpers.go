@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	"gopkg.in/ini.v1"
 )
 
 // filters a string map.
@@ -73,4 +75,56 @@ func randomBase64(length int) (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(randomBytes)[:length], nil
+}
+
+func createConfigDir() error {
+	if _, err := os.Stat("/etc/yadeb"); err != nil {
+		if os.IsNotExist(err) {
+			err := os.Mkdir("/etc/yadeb", 0644)
+			if err != nil {
+				return err
+			}
+
+			if err = createConfig(); err != nil {
+				return fmt.Errorf("createConfig: %s", err.Error())
+			}
+		} else {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func createConfig() error {
+	if _, err := os.Stat("/etc/yadeb/config.ini"); err != nil {
+		if os.IsNotExist(err) {
+			cfg := ini.Empty()
+
+			sec, err := cfg.NewSection("yadeb")
+			if err != nil {
+				return err
+			}
+
+			if _, err = sec.NewKey("version", Version); err != nil {
+				return err
+			}
+
+			if _, err = sec.NewKey("allowPrerelease", "false"); err != nil {
+				return err
+			}
+
+			if err = cfg.SaveTo("/etc/yadeb/config.ini"); err != nil {
+				return err
+			}
+
+			if err = os.Chmod("/etc/yadeb/config.ini", 0644); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
+	return nil
 }
