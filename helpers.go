@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -229,4 +231,42 @@ func getPackage(link string) (*Package, error) {
 	}
 
 	return nil, nil
+}
+
+func runApt(args ...string) error {
+	cmd := exec.Command("/usr/bin/apt", args...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		if cmd.ProcessState != nil {
+			return fmt.Errorf("apt failed with exit code %d", cmd.ProcessState.ExitCode())
+		}
+
+		return err
+	}
+
+	return nil
+}
+
+func userChown(path, username string) error {
+	// user lookup
+	u, err := user.Lookup(username)
+	if err != nil {
+		return err
+	}
+
+	uid, err := strconv.Atoi(u.Uid)
+	if err != nil {
+		return err
+	}
+
+	// group lookkup
+	gid, err := strconv.Atoi(u.Gid)
+	if err != nil {
+		return err
+	}
+
+	return os.Chown(path, uid, gid)
 }

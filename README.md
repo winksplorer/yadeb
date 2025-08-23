@@ -15,7 +15,7 @@ Yet Another .deb Fetcher
     - [X] Temp directory
     - [X] Downloading
     - [X] Marking as installed and keeping track
-    - [ ] Actually installing through apt
+    - [X] Actually installing through apt
     - [ ] Cleanup
     - [ ] Downloading specific versions
     - [ ] Allow user to choose candidate if filtering doesn't work correctly
