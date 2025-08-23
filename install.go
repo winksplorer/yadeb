@@ -51,7 +51,7 @@ func cmdInstall() int {
 }
 
 func filterCandidates(candidates map[string]string) error {
-	fmt.Println("first iteration (*.deb)")
+	fmt.Println("first candidate iteration (*.deb)")
 	mapFilter(candidates, func(v string) bool {
 		return !strings.HasSuffix(v, ".deb")
 	})
@@ -62,7 +62,7 @@ func filterCandidates(candidates map[string]string) error {
 		return fmt.Errorf("zero candidates remaining, cannot continue")
 	}
 
-	fmt.Printf("second iteration (%s)\n", runtime.GOARCH)
+	fmt.Printf("second candidate iteration (%s)\n", runtime.GOARCH)
 
 	// match any architecture to see if they exist
 	var allArchitectures []string
@@ -80,8 +80,7 @@ func filterCandidates(candidates map[string]string) error {
 
 	if !archSpecific {
 		// TODO: ask user which one to download
-		fmt.Println("i give up")
-		return nil
+		return fmt.Errorf("multiple candidates remaining yet no architecture information, cannot continue (TODO: let user choose)")
 	}
 
 	// look for current architecture

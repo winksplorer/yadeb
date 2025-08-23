@@ -12,6 +12,7 @@ import (
 )
 
 func githubCmdInstall(u *url.URL) int {
+	// get user and repo
 	pathParts := strings.Split(u.Path, "/")
 	if len(pathParts) < 3 {
 		fmt.Println("yadeb: invalid github repo link (not enough path parts)")
@@ -26,17 +27,21 @@ func githubCmdInstall(u *url.URL) int {
 		return 2
 	}
 
+	// get releases
 	releaseJson, err := githubGetReleases(user, repo)
 	if err != nil {
 		fmt.Println("yadeb: couldn't get github releases:", err.Error())
 		return 1
 	}
 
+	// if no candidates in latest release then error out
+	// TODO! CHECK THE OTHER RELEASES!!!!
 	if gjson.Get(releaseJson, "0.assets.#").Int() == 0 {
 		fmt.Println("yadeb: requested package has no releases available")
 		return 1
 	}
 
+	// get and filter candidates (release files)
 	candidates, _ := githubGetCandidates(releaseJson)
 
 	if err := filterCandidates(candidates); err != nil {
@@ -44,6 +49,12 @@ func githubCmdInstall(u *url.URL) int {
 		return 1
 	}
 
+	if len(candidates) != 1 {
+		fmt.Println("yadeb: too many candidates (TODO: let user choose)")
+		return 1
+	}
+
+	// generate tmp dir
 	b64, err := randomBase64(16)
 	if err != nil {
 		fmt.Println("yadeb: couldn't generate tmp id:", err.Error())
@@ -52,11 +63,12 @@ func githubCmdInstall(u *url.URL) int {
 
 	tempDir := "/tmp/yadeb-" + b64
 
-	if err := os.Mkdir(tempDir, 0666); err != nil {
+	if err := os.Mkdir(tempDir, 0600); err != nil {
 		fmt.Println("yadeb: couldn't generate tmp folder:", err.Error())
 		return 1
 	}
 
+	// bad but it's fine (for now). downlad the remaining candidate
 	for _, v := range candidates {
 		if err := downloadFile(v, fmt.Sprintf("%s/%s", tempDir, v[strings.LastIndex(v, "/")+1:])); err != nil {
 			fmt.Println("yadeb: couldn't download selected candidate:", err.Error())
@@ -76,7 +88,7 @@ func githubGetReleases(user, repo string) (string, error) {
 		return "", err
 	}
 
-	// Set headers like in curl
+	// set headers
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
@@ -87,7 +99,7 @@ func githubGetReleases(user, repo string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	// Read and dump response
+	// read response
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
