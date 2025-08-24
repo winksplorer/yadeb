@@ -11,7 +11,7 @@ import (
 )
 
 // github-specific install code
-func githubCmdInstall(u *url.URL) int {
+func githubCmdInstall(u *url.URL, tagFlag string) int {
 	// get user and repo
 	pathParts := strings.Split(u.Path, "/")
 	if len(pathParts) < 3 {
@@ -48,36 +48,37 @@ func githubCmdInstall(u *url.URL) int {
 	)
 
 	// go through releases
-	for i := range gjson.Get(releaseJson, "#").Int() {
-		// get tag
-		tag = gjson.Get(releaseJson, fmt.Sprintf("%d.tag_name", i)).String()
+	if tagFlag == "latest" {
+		for i := range gjson.Get(releaseJson, "#").Int() {
+			// get tag
+			tag = gjson.Get(releaseJson, fmt.Sprintf("%d.tag_name", i)).String()
 
-		// check if any assets are available
-		if gjson.Get(releaseJson, fmt.Sprintf("%d.assets.#", i)).Int() == 0 {
-			fmt.Printf("Skipping release %s: \033[91mno assets available\033[0m\n", tag)
-			continue
+			if err := githubFormatCandidates(&candidates, releaseJson, i); err != nil {
+				fmt.Printf("Skipping release %s: \033[91m%s\033[0m\n", tag, err.Error())
+				continue
+			}
+
+			validTag = true
+			break
 		}
 
-		// get and filter candidates (release files)
-		candidates = githubGetCandidates(releaseJson, i)
-
-		if err := filterCandidates(candidates); err != nil {
-			fmt.Printf("Skipping release %s: \033[91m%s\033[0m\n", tag, err.Error())
-			continue
+		if !validTag {
+			ansiError("No valid release found")
+			return 1
+		}
+	} else {
+		foundTag, index := githubTagSearch(releaseJson, tagFlag)
+		if !foundTag {
+			ansiError("Could not find release tagged:", tagFlag)
+			return 2
 		}
 
-		if len(candidates) != 1 {
-			fmt.Printf("Skipping release %s: \033[91mtoo many candidates (TODO: let user choose)\033[0m\n", tag)
-			continue
+		tag = tagFlag
+
+		if err := githubFormatCandidates(&candidates, releaseJson, index); err != nil {
+			ansiError(fmt.Sprintf("Release %s could not be installed: %s", tag, err.Error()))
+			return 1
 		}
-
-		validTag = true
-		break
-	}
-
-	if !validTag {
-		ansiError("No valid release found")
-		return 1
 	}
 
 	// generate tmp dir
@@ -134,4 +135,36 @@ func githubGetCandidates(json string, release int64) map[string]string {
 	}
 
 	return candidates
+}
+
+// return to caveman 2
+// returns: found, index
+func githubTagSearch(json, tag string) (bool, int64) {
+	for i := range gjson.Get(json, "#").Int() {
+		if tag == gjson.Get(json, fmt.Sprintf("%d.tag_name", i)).String() {
+			return true, i
+		}
+	}
+
+	return false, 0
+}
+
+func githubFormatCandidates(candidates *map[string]string, json string, index int64) error {
+	// check if any assets are available
+	if gjson.Get(json, fmt.Sprintf("%d.assets.#", index)).Int() == 0 {
+		return fmt.Errorf("no assets available")
+	}
+
+	// get and filter candidates (release files)
+	*candidates = githubGetCandidates(json, index)
+
+	if err := filterCandidates(*candidates); err != nil {
+		return err
+	}
+
+	if len(*candidates) != 1 {
+		return fmt.Errorf("too many candidates (TODO: let user choose)")
+	}
+
+	return nil
 }

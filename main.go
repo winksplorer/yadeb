@@ -61,13 +61,11 @@ func main() {
 			fs.PrintDefaults()
 		}
 
-		// testFlag := fs.String("flag", "default", "desc")
+		tagFlag := fs.String("tag", "latest", "Release/GitHub tag")
 
 		fs.Parse(os.Args[2:])
 
-		// fmt.Println(*testFlag)
-
-		os.Exit(cmdInstall(fs.Args()))
+		os.Exit(cmdInstall(fs.Args(), *tagFlag))
 	case "remove", "purge", "upgrade", "upgrade-all", "list", "pin", "selfhost":
 		fmt.Println("not implemented")
 		os.Exit(2)

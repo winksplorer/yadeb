@@ -12,7 +12,7 @@ import (
 )
 
 // the install command
-func cmdInstall(links []string) int {
+func cmdInstall(links []string, tagFlag string) int {
 	if len(links) == 0 {
 		ansiError("Nothing to install")
 		return 2
@@ -66,7 +66,7 @@ func cmdInstall(links []string) int {
 	// decide what to do based on domain
 	switch u.Host {
 	case "github.com":
-		return githubCmdInstall(u)
+		return githubCmdInstall(u, tagFlag)
 	default:
 		ansiError("Unknown source domain:", u.Host)
 		return 2
