@@ -56,22 +56,20 @@ func githubCmdInstall(u *url.URL) int {
 
 		// check if any assets are available
 		if gjson.Get(releaseJson, fmt.Sprintf("%d.assets.#", i)).Int() == 0 {
-			fmt.Printf("Skipping release %s: no assets available\n", tag)
+			fmt.Printf("Skipping release %s: \033[91mno assets available\033[0m\n", tag)
 			continue
 		}
 
 		// get and filter candidates (release files)
-		fmt.Printf("Asking GitHub for files on release %s...", tag)
 		candidates = githubGetCandidates(releaseJson, i)
-		fmt.Println(doneMsg)
 
 		if err := filterCandidates(candidates); err != nil {
-			fmt.Printf("Skipping release %s: %s\n", tag, err.Error())
+			fmt.Printf("Skipping release %s: \033[91m%s\033[0m\n", tag, err.Error())
 			continue
 		}
 
 		if len(candidates) != 1 {
-			fmt.Printf("Skipping release %s: too many candidates (TODO: let user choose)\n", tag)
+			fmt.Printf("Skipping release %s: \033[91mtoo many candidates (TODO: let user choose)\033[0m\n", tag)
 			continue
 		}
 

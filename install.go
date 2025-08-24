@@ -75,20 +75,15 @@ func cmdInstall() int {
 // filters candidates from name
 func filterCandidates(candidates map[string]string) error {
 	// .deb filtering
-	fmt.Print("First candidate iteration (*.deb)...")
 	mapFilter(candidates, func(v string) bool {
 		return !strings.HasSuffix(v, ".deb")
 	})
-	fmt.Println(doneMsg)
 
 	if len(candidates) == 1 {
 		return nil
 	} else if len(candidates) == 0 {
-		return fmt.Errorf("zero candidates remaining, cannot continue")
+		return fmt.Errorf("no package files found")
 	}
-
-	// arch filtering
-	fmt.Printf("Second candidate iteration (%s)...", runtime.GOARCH)
 
 	// match any arch to see if they exist
 	archSpecific := false
@@ -100,9 +95,8 @@ func filterCandidates(candidates map[string]string) error {
 	}
 
 	if !archSpecific {
-		// TODO: ask user which one to download
 		fmt.Println() // WOW this is shit
-		return fmt.Errorf("multiple candidates remaining yet no architecture information, cannot continue (TODO: let user choose)")
+		return fmt.Errorf("multiple package files yet no architecture information (TODO: let user choose)")
 	}
 
 	// look for current architecture
@@ -110,10 +104,8 @@ func filterCandidates(candidates map[string]string) error {
 		return !containsAny(v, architectureAliases[runtime.GOARCH])
 	})
 
-	fmt.Println(doneMsg)
-
 	if len(candidates) == 0 {
-		return fmt.Errorf("zero candidates remaining, cannot continue")
+		return fmt.Errorf("no package files for %s", runtime.GOARCH)
 	}
 
 	return nil
