@@ -9,12 +9,8 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
-	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
-
-	"gopkg.in/ini.v1"
 )
 
 // filters a string map.
@@ -49,8 +45,6 @@ func lnAnsiError(s ...string) {
 
 // downloads file
 func downloadFile(href, path string) error {
-	fmt.Printf("Downloading %s...", filepath.Base(href))
-
 	// check if file already exists
 	if _, err := os.Stat(path); err == nil {
 		return fmt.Errorf("%s already exists", path)
@@ -82,7 +76,6 @@ func downloadFile(href, path string) error {
 		return err
 	}
 
-	fmt.Println(doneMsg)
 	return nil
 }
 
@@ -95,149 +88,6 @@ func randomBase64(length int) (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(randomBytes)[:length], nil
-}
-
-// creates /etc/yadeb
-func createConfigDir() error {
-	if _, err := os.Stat("/etc/yadeb"); err != nil {
-		if os.IsNotExist(err) {
-			err := os.Mkdir("/etc/yadeb", 0644)
-			if err != nil {
-				return err
-			}
-
-			if err = createConfig(); err != nil {
-				return fmt.Errorf("createConfig: %s", err.Error())
-			}
-		} else {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// creates and fills in /etc/yadeb/config.ini, IF IT EXISTS
-func createConfig() error {
-	if _, err := os.Stat("/etc/yadeb/config.ini"); err != nil {
-		if os.IsNotExist(err) {
-			// ini data
-			cfg := ini.Empty()
-
-			sec, err := cfg.NewSection("yadeb")
-			if err != nil {
-				return err
-			}
-
-			if _, err = sec.NewKey("version", Version); err != nil {
-				return err
-			}
-
-			if _, err = sec.NewKey("allowPrerelease", "false"); err != nil {
-				return err
-			}
-
-			// save ini file
-			if err = cfg.SaveTo("/etc/yadeb/config.ini"); err != nil {
-				return err
-			}
-
-			if err = os.Chmod("/etc/yadeb/config.ini", 0644); err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// marks a package as installed in /etc/yadeb/installed.ini, creating it if necessary
-func markAsInstalled(debFile, link, installedTag string) error {
-	out, err := exec.Command("dpkg-deb", "--field", debFile, "Package").Output()
-	if err != nil {
-		return err
-	}
-	pkg := strings.TrimSpace(string(out))
-
-	// get base ini data
-	var cfg *ini.File
-	if _, err := os.Stat("/etc/yadeb/installed.ini"); err != nil {
-		if os.IsNotExist(err) {
-			cfg = ini.Empty()
-		} else {
-			return err
-		}
-	} else {
-		cfg, err = ini.Load("/etc/yadeb/installed.ini")
-		if err != nil {
-			return err
-		}
-	}
-
-	// data
-	sec, err := cfg.NewSection(link)
-	if err != nil {
-		return err
-	}
-
-	// I LOVE GO!!!
-	// do i REALLY need a /s there?
-
-	if _, err = sec.NewKey("Package", pkg); err != nil {
-		return err
-	}
-
-	if _, err = sec.NewKey("InstalledTag", installedTag); err != nil {
-		return err
-	}
-
-	if _, err = sec.NewKey("InstallDate", time.Now().Format("2006-01-02")); err != nil {
-		return err
-	}
-
-	if _, err = sec.NewKey("LastUpdate", time.Now().Format("2006-01-02")); err != nil {
-		return err
-	}
-
-	// save ini file
-	if err = cfg.SaveTo("/etc/yadeb/installed.ini"); err != nil {
-		return err
-	}
-
-	if err = os.Chmod("/etc/yadeb/installed.ini", 0644); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// gets a tracked package by link
-func getPackage(link string) (*Package, error) {
-	if _, err := os.Stat("/etc/yadeb/installed.ini"); err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		} else {
-			return nil, err
-		}
-	}
-
-	cfg, err := ini.Load("/etc/yadeb/installed.ini")
-	if err != nil {
-		return nil, err
-	}
-
-	for _, section := range cfg.Sections() {
-		if section.Name() == link {
-			var p Package
-			p.Link = section.Name()
-			section.MapTo(&p)
-			return &p, nil
-		}
-	}
-
-	return nil, nil
 }
 
 // runs apt with args, fully passing stdin, stdout, and stderr
@@ -284,4 +134,24 @@ func cleanupDir(path string) int {
 	fmt.Println(doneMsg)
 
 	return 0
+}
+
+// creates /tmp/yadeb-16 char b64 string/
+func createTempDir() (string, error) {
+	b64, err := randomBase64(16)
+	if err != nil {
+		return "", err
+	}
+
+	tempDir := "/tmp/yadeb-" + b64
+
+	if err := os.Mkdir(tempDir, 0755); err != nil {
+		return "", err
+	}
+
+	if err := aptChown(tempDir); err != nil {
+		return "", err
+	}
+
+	return tempDir, nil
 }

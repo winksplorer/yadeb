@@ -5,8 +5,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/tidwall/gjson"
@@ -83,49 +81,19 @@ func githubCmdInstall(u *url.URL) int {
 	}
 
 	// generate tmp dir
-	b64, err := randomBase64(16)
+	tempDir, err := createTempDir()
 	if err != nil {
-		ansiError("Couldn't generate tmp id:", err.Error())
+		ansiError("Couldn't create temp directory:", err.Error())
 		return 1
 	}
 
-	tempDir := "/tmp/yadeb-" + b64
-
-	if err := os.Mkdir(tempDir, 0755); err != nil {
-		ansiError("Couldn't create tmp folder:", err.Error())
-		return 1
-	}
-
-	if err := aptChown(tempDir); err != nil {
-		ansiError("Couldn't chown downloaded deb to _apt:", err.Error())
-		return 1
-	}
-
-	// bad but it's fine (for now). downlad the remaining candidate
+	// downlad the remaining candidate
 	for _, v := range candidates {
-		path := fmt.Sprintf("%s/%s", tempDir, filepath.Base(v))
-
-		if err := downloadFile(v, path); err != nil {
-			ansiError("Couldn't download selected candidate:", err.Error())
-			cleanupDir(tempDir)
-			return 1
-		}
-
-		fmt.Printf("Marking \"%s/%s\" as installed...", user, repo)
-		if err := markAsInstalled(path, u.String(), tag); err != nil {
-			lnAnsiError(fmt.Sprintf("Couldn't mark %s/%s as installed:", user, repo), err.Error())
-			cleanupDir(tempDir)
-			return 1
-		}
-		fmt.Println(doneMsg)
-
-		fmt.Print("Starting APT...\n\n")
-		if err := runApt("install", path); err != nil {
-			ansiError("Couldn't run APT:", err.Error())
-		}
+		return candidateInstall(user, repo, tempDir, tag, v, u)
 	}
 
-	return cleanupDir(tempDir)
+	ansiError("No candidate to install, somehow")
+	return 1
 }
 
 // uses github api to get repo's releases

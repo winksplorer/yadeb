@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
@@ -109,4 +110,32 @@ func filterCandidates(candidates map[string]string) error {
 	}
 
 	return nil
+}
+
+// installs a candidate
+func candidateInstall(user, repo, tempDir, tag, downloadLink string, u *url.URL) int {
+	path := fmt.Sprintf("%s/%s", tempDir, filepath.Base(downloadLink))
+
+	fmt.Printf("Downloading %s from release %s...", filepath.Base(downloadLink), tag)
+	if err := downloadFile(downloadLink, path); err != nil {
+		lnAnsiError("Couldn't download selected candidate:", err.Error())
+		cleanupDir(tempDir)
+		return 1
+	}
+	fmt.Println(doneMsg)
+
+	fmt.Printf("Marking \"%s/%s\" as installed...", user, repo)
+	if err := markAsInstalled(path, u.String(), tag); err != nil {
+		lnAnsiError(fmt.Sprintf("Couldn't mark %s/%s as installed:", user, repo), err.Error())
+		cleanupDir(tempDir)
+		return 1
+	}
+	fmt.Println(doneMsg)
+
+	fmt.Print("Starting APT...\n\n")
+	if err := runApt("install", path); err != nil {
+		ansiError("Couldn't run APT:", err.Error())
+	}
+
+	return cleanupDir(tempDir)
 }
