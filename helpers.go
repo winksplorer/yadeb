@@ -264,3 +264,15 @@ func aptChown(path string) error {
 
 	return os.Chown(path, uid, 0)
 }
+
+// output is return code
+func cleanupDir(path string) int {
+	fmt.Print("\nCleaning up...")
+	if err := os.RemoveAll(path); err != nil {
+		lnAnsiError(fmt.Sprintf("Couldn't delete %s:", path), err.Error())
+		return 1
+	}
+	fmt.Println(doneMsg)
+
+	return 0
+}

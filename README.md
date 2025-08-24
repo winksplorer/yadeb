@@ -16,7 +16,7 @@ Yet Another .deb Fetcher
     - [X] Downloading
     - [X] Marking as installed and keeping track
     - [X] Actually installing through apt
-    - [ ] Cleanup
+    - [X] Cleanup
     - [ ] Downloading specific versions
     - [ ] Allow user to choose candidate if filtering doesn't work correctly
     - [ ] Allow user to disable filtering and directly choosing a candidate

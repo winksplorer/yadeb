@@ -90,13 +90,15 @@ func githubCmdInstall(u *url.URL) int {
 		path := fmt.Sprintf("%s/%s", tempDir, filepath.Base(v))
 
 		if err := downloadFile(v, path); err != nil {
-			ansiError("Couldn't download selected candidate", err.Error())
+			ansiError("Couldn't download selected candidate:", err.Error())
+			cleanupDir(tempDir)
 			return 1
 		}
 
 		fmt.Printf("Marking \"%s/%s\" as installed...", user, repo)
 		if err := markAsInstalled(path, u.String(), tag); err != nil {
-			lnAnsiError(fmt.Sprintf("Couldn't mark %s/%s as installed", user, repo), err.Error())
+			lnAnsiError(fmt.Sprintf("Couldn't mark %s/%s as installed:", user, repo), err.Error())
+			cleanupDir(tempDir)
 			return 1
 		}
 		fmt.Println(doneMsg)
@@ -104,13 +106,10 @@ func githubCmdInstall(u *url.URL) int {
 		fmt.Print("Starting APT...\n\n")
 		if err := runApt("install", path); err != nil {
 			ansiError("Couldn't run APT:", err.Error())
-			return 1
 		}
-
-		break
 	}
 
-	return 0
+	return cleanupDir(tempDir)
 }
 
 // uses github api to get repo's releases
