@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"time"
@@ -53,7 +54,20 @@ func main() {
 	case "-v", "--version":
 		fmt.Printf("yadeb v%s (built on %s)\n", Version, BuildDate)
 	case "install":
-		os.Exit(cmdInstall())
+		fs := flag.NewFlagSet("install", flag.ExitOnError)
+		fs.Usage = func() {
+			fmt.Fprintf(os.Stderr, "Usage: %s install [options] [links]\n\n", os.Args[0])
+			fmt.Fprintf(os.Stderr, "All options:\n")
+			fs.PrintDefaults()
+		}
+
+		// testFlag := fs.String("flag", "default", "desc")
+
+		fs.Parse(os.Args[2:])
+
+		// fmt.Println(*testFlag)
+
+		os.Exit(cmdInstall(fs.Args()))
 	case "remove", "purge", "upgrade", "upgrade-all", "list", "pin", "selfhost":
 		fmt.Println("not implemented")
 		os.Exit(2)
@@ -77,8 +91,9 @@ func helpMenu() {
 			"  upgrade-all - upgrades all installed packages\n"+
 			"  list - lists installed packages\n"+
 			"  pin - pins a package to a specific version\n"+
-			"  selfhost - reinstalls yadeb itself as a package\n",
+			"  selfhost - reinstalls yadeb itself as a package\n\n"+
+			"For more info about a command, type '%s <command> --help'.\n",
 
-		Version, BuildDate, os.Args[0],
+		Version, BuildDate, os.Args[0], os.Args[0],
 	)
 }

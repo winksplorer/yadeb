@@ -12,8 +12,8 @@ import (
 )
 
 // the install command
-func cmdInstall() int {
-	if len(os.Args) <= 2 {
+func cmdInstall(links []string) int {
+	if len(links) == 0 {
 		ansiError("Nothing to install")
 		return 2
 	}
@@ -29,7 +29,7 @@ func cmdInstall() int {
 	}
 
 	// "common hack"
-	raw := os.Args[len(os.Args)-1]
+	raw := links[0]
 	if !strings.Contains(raw, "://") {
 		raw = "https://" + raw
 	}
