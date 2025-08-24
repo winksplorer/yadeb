@@ -38,32 +38,49 @@ func githubCmdInstall(u *url.URL) int {
 	}
 	fmt.Println(doneMsg)
 
-	// if no candidates in latest release then error out
-	// TODO! CHECK THE OTHER RELEASES!!!!
-	if gjson.Get(releaseJson, "0.assets.#").Int() == 0 {
+	if gjson.Get(releaseJson, "#").Int() == 0 {
 		ansiError("Requested package has no releases available")
 		return 1
 	}
 
-	// get tag
-	tag := gjson.Get(releaseJson, "0.tag_name").String()
+	var (
+		candidates map[string]string
+		tag        string
+		validTag   bool
+	)
 
-	// get and filter candidates (release files)
-	fmt.Printf("Asking GitHub for files on release %s...", tag)
-	candidates, err := githubGetCandidates(releaseJson)
-	if err != nil {
-		lnAnsiError("Couldn't get GitHub release files:", err.Error())
-		return 1
+	// go through releases
+	for i := range gjson.Get(releaseJson, "#").Int() {
+		// get tag
+		tag = gjson.Get(releaseJson, fmt.Sprintf("%d.tag_name", i)).String()
+
+		// check if any assets are available
+		if gjson.Get(releaseJson, fmt.Sprintf("%d.assets.#", i)).Int() == 0 {
+			fmt.Printf("Skipping release %s: no assets available\n", tag)
+			continue
+		}
+
+		// get and filter candidates (release files)
+		fmt.Printf("Asking GitHub for files on release %s...", tag)
+		candidates = githubGetCandidates(releaseJson, i)
+		fmt.Println(doneMsg)
+
+		if err := filterCandidates(candidates); err != nil {
+			fmt.Printf("Skipping release %s: %s\n", tag, err.Error())
+			continue
+		}
+
+		if len(candidates) != 1 {
+			fmt.Printf("Skipping release %s: too many candidates (TODO: let user choose)\n", tag)
+			continue
+		}
+
+		validTag = true
+		break
 	}
-	fmt.Println(doneMsg)
 
-	if err := filterCandidates(candidates); err != nil {
-		ansiError(err.Error())
-		return 1
-	}
-
-	if len(candidates) != 1 {
-		ansiError("Too many candidates (TODO: let user choose)")
+	if !validTag {
+		ansiError("No valid release found")
 		return 1
 	}
 
@@ -115,7 +132,7 @@ func githubCmdInstall(u *url.URL) int {
 
 // uses github api to get repo's releases
 func githubGetReleases(user, repo string) (string, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.github.com/repos/%s/%s/releases?per_page=50", user, repo), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.github.com/repos/%s/%s/releases?per_page=%d", user, repo, releaseDepth), nil)
 	if err != nil {
 		return "", err
 	}
@@ -141,15 +158,14 @@ func githubGetReleases(user, repo string) (string, error) {
 }
 
 // use githubGetReleases to get the json
-func githubGetCandidates(json string) (map[string]string, error) {
-	assetCount := gjson.Get(json, "0.assets.#").Int()
+func githubGetCandidates(json string, release int64) map[string]string {
+	assetCount := gjson.Get(json, fmt.Sprintf("%d.assets.#", release)).Int()
 	candidates := make(map[string]string)
 
 	for i := range assetCount {
-		assetPath := fmt.Sprintf("0.assets.%d", i)
-
+		assetPath := fmt.Sprintf("%d.assets.%d", release, i)
 		candidates[gjson.Get(json, assetPath+".name").String()] = gjson.Get(json, assetPath+".browser_download_url").String()
 	}
 
-	return candidates, nil
+	return candidates
 }

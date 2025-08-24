@@ -20,11 +20,15 @@ var (
 		"riscv64": {"riscv64", "rv64", "risc-v64"},
 		"s390x":   {"s390x"},
 	}
+
+	// all architecture aliases in a single slice
+	allArchitectures []string
 )
 
 const (
 	// green "done" string
-	doneMsg string = " \033[92mDone\033[0m"
+	doneMsg      string = " \033[92mDone\033[0m"
+	releaseDepth int    = 50
 )
 
 type (

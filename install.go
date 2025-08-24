@@ -28,7 +28,7 @@ func cmdInstall() int {
 	}
 
 	// "common hack"
-	raw := os.Args[2]
+	raw := os.Args[len(os.Args)-1]
 	if !strings.Contains(raw, "://") {
 		raw = "https://" + raw
 	}
@@ -55,6 +55,11 @@ func cmdInstall() int {
 	if p != nil {
 		fmt.Fprintln(os.Stderr, u.String(), "is already installed")
 		return 0
+	}
+
+	// init architecture slice
+	for _, v := range architectureAliases {
+		allArchitectures = append(allArchitectures, v...)
 	}
 
 	// decide what to do based on domain
@@ -85,12 +90,7 @@ func filterCandidates(candidates map[string]string) error {
 	// arch filtering
 	fmt.Printf("Second candidate iteration (%s)...", runtime.GOARCH)
 
-	// match any architecture to see if they exist
-	var allArchitectures []string
-	for _, v := range architectureAliases {
-		allArchitectures = append(allArchitectures, v...)
-	}
-
+	// match any arch to see if they exist
 	archSpecific := false
 	for _, v := range candidates {
 		if containsAny(v, allArchitectures) {
