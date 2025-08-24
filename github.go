@@ -12,6 +12,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+// github-specific install code
 func githubCmdInstall(u *url.URL) int {
 	// get user and repo
 	pathParts := strings.Split(u.Path, "/")

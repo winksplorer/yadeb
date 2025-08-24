@@ -10,19 +10,20 @@ import (
 	"syscall"
 )
 
+// the install command
 func cmdInstall() int {
 	if len(os.Args) <= 2 {
-		fmt.Println("yadeb: nothing to install")
+		ansiError("Nothing to install")
 		return 2
 	}
 
 	if syscall.Geteuid() != 0 {
-		fmt.Println("yadeb: installation requires root privileges")
+		ansiError("Installation requires root privileges")
 		return 2
 	}
 
 	if err := createConfigDir(); err != nil {
-		fmt.Println("yadeb: couldn't create (or check existence of) /etc/yadeb")
+		ansiError("Couldn't create (or check existence of) /etc/yadeb")
 		return 1
 	}
 
@@ -35,13 +36,13 @@ func cmdInstall() int {
 	// parse link
 	u, err := url.Parse(raw)
 	if err != nil {
-		fmt.Println("yadeb: couldn't parse link:", err.Error())
+		ansiError("Couldn't parse link:", err.Error())
 		return 1
 	}
 
 	// error out if unknown scheme
 	if !slices.Contains([]string{"http", "https", ""}, u.Scheme) {
-		fmt.Printf("yadeb: unknown source scheme (%s)\n", u.Scheme)
+		ansiError("Unknown source scheme:", u.Scheme)
 		return 2
 	}
 
@@ -61,11 +62,12 @@ func cmdInstall() int {
 	case "github.com":
 		return githubCmdInstall(u)
 	default:
-		fmt.Printf("yadeb: unknown source domain (%s)\n", u.Host)
+		ansiError("Unknown source domain:", u.Host)
 		return 2
 	}
 }
 
+// filters candidates from name
 func filterCandidates(candidates map[string]string) error {
 	// .deb filtering
 	fmt.Print("First candidate iteration (*.deb)...")
@@ -99,6 +101,7 @@ func filterCandidates(candidates map[string]string) error {
 
 	if !archSpecific {
 		// TODO: ask user which one to download
+		fmt.Println() // WOW this is shit
 		return fmt.Errorf("multiple candidates remaining yet no architecture information, cannot continue (TODO: let user choose)")
 	}
 

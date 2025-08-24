@@ -97,6 +97,7 @@ func randomBase64(length int) (string, error) {
 	return base64.RawURLEncoding.EncodeToString(randomBytes)[:length], nil
 }
 
+// creates /etc/yadeb
 func createConfigDir() error {
 	if _, err := os.Stat("/etc/yadeb"); err != nil {
 		if os.IsNotExist(err) {
@@ -116,6 +117,7 @@ func createConfigDir() error {
 	return nil
 }
 
+// creates and fills in /etc/yadeb/config.ini, IF IT EXISTS
 func createConfig() error {
 	if _, err := os.Stat("/etc/yadeb/config.ini"); err != nil {
 		if os.IsNotExist(err) {
@@ -151,6 +153,7 @@ func createConfig() error {
 	return nil
 }
 
+// marks a package as installed in /etc/yadeb/installed.ini, creating it if necessary
 func markAsInstalled(debFile, link, installedTag string) error {
 	out, err := exec.Command("dpkg-deb", "--field", debFile, "Package").Output()
 	if err != nil {
@@ -178,6 +181,9 @@ func markAsInstalled(debFile, link, installedTag string) error {
 	if err != nil {
 		return err
 	}
+
+	// I LOVE GO!!!
+	// do i REALLY need a /s there?
 
 	if _, err = sec.NewKey("Package", pkg); err != nil {
 		return err
@@ -207,6 +213,7 @@ func markAsInstalled(debFile, link, installedTag string) error {
 	return nil
 }
 
+// gets a tracked package by link
 func getPackage(link string) (*Package, error) {
 	if _, err := os.Stat("/etc/yadeb/installed.ini"); err != nil {
 		if os.IsNotExist(err) {
@@ -233,6 +240,7 @@ func getPackage(link string) (*Package, error) {
 	return nil, nil
 }
 
+// runs apt with args, fully passing stdin, stdout, and stderr
 func runApt(args ...string) error {
 	cmd := exec.Command("/usr/bin/apt", args...)
 	cmd.Stdin = os.Stdin
@@ -250,6 +258,7 @@ func runApt(args ...string) error {
 	return nil
 }
 
+// chowns a dir/file to _apt:root
 func aptChown(path string) error {
 	// user lookup
 	u, err := user.Lookup("_apt")
@@ -265,7 +274,7 @@ func aptChown(path string) error {
 	return os.Chown(path, uid, 0)
 }
 
-// output is return code
+// removes directory, output is return code
 func cleanupDir(path string) int {
 	fmt.Print("\nCleaning up...")
 	if err := os.RemoveAll(path); err != nil {

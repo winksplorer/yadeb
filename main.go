@@ -7,9 +7,11 @@ import (
 )
 
 var (
-	BuildDate           string = "undefined"
-	Version             string = "undefined"
-	architectureAliases        = map[string][]string{
+	BuildDate string = "undefined"
+	Version   string = "undefined"
+
+	// supported architectures (GOARCH format) and aliases to all the weird names people give them
+	architectureAliases = map[string][]string{
 		"386":     {"i386", "i686", "ia32", "x86"},
 		"amd64":   {"amd64", "x86_64", "x86-64", "x64"},
 		"arm":     {"armhf", "armel", "armv7"}, // TODO: this is bad. armhf != armel. this WILL cause problems later. TODO!!!!
@@ -21,10 +23,12 @@ var (
 )
 
 const (
+	// green "done" string
 	doneMsg string = " \033[92mDone\033[0m"
 )
 
 type (
+	// a tracked "package"
 	Package struct {
 		Name         string
 		Link         string
@@ -34,6 +38,7 @@ type (
 	}
 )
 
+// entry point
 func main() {
 	if len(os.Args) <= 1 {
 		helpMenu()
@@ -54,6 +59,7 @@ func main() {
 	}
 }
 
+// shows help message
 func helpMenu() {
 	// TODO: maybe use a different word instead of packages?
 	fmt.Printf(
