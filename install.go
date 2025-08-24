@@ -124,7 +124,7 @@ func candidateInstall(user, repo, tempDir, tag, downloadLink string, u *url.URL)
 	}
 	fmt.Println(doneMsg)
 
-	fmt.Printf("Marking \"%s/%s\" as installed...", user, repo)
+	fmt.Printf("Marking %s/%s as installed...", user, repo)
 	if err := markAsInstalled(path, u.String(), tag); err != nil {
 		lnAnsiError(fmt.Sprintf("Couldn't mark %s/%s as installed:", user, repo), err.Error())
 		cleanupDir(tempDir)
@@ -135,6 +135,15 @@ func candidateInstall(user, repo, tempDir, tag, downloadLink string, u *url.URL)
 	fmt.Print("Starting APT...\n\n")
 	if err := runApt("install", path); err != nil {
 		ansiError("Couldn't run APT:", err.Error())
+
+		// if apt fails then unmark it
+		fmt.Printf("Removing installation mark for %s/%s...", user, repo)
+		if err := unmarkAsInstalled(u.String()); err != nil {
+			lnAnsiError(fmt.Sprintf("Couldn't remove installation mark for %s/%s:", user, repo))
+			cleanupDir(tempDir)
+			return 1
+		}
+		fmt.Println(doneMsg)
 	}
 
 	return cleanupDir(tempDir)

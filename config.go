@@ -126,6 +126,34 @@ func markAsInstalled(debFile, link, installedTag string) error {
 	return nil
 }
 
+// unmarks a package as installed
+func unmarkAsInstalled(link string) error {
+	// file not exist logic
+	if _, err := os.Stat("/etc/yadeb/installed.ini"); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		} else {
+			return err
+		}
+	}
+
+	// load
+	cfg, err := ini.Load("/etc/yadeb/installed.ini")
+	if err != nil {
+		return err
+	}
+
+	// remove
+	cfg.DeleteSection(link)
+
+	// save
+	if err = cfg.SaveTo("/etc/yadeb/installed.ini"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // gets a tracked package by link
 func getPackage(link string) (*Package, error) {
 	if _, err := os.Stat("/etc/yadeb/installed.ini"); err != nil {
@@ -145,7 +173,10 @@ func getPackage(link string) (*Package, error) {
 		if section.Name() == link {
 			var p Package
 			p.Link = section.Name()
-			section.MapTo(&p)
+			if err = section.MapTo(&p); err != nil {
+				return nil, err
+			}
+
 			return &p, nil
 		}
 	}
