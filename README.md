@@ -19,7 +19,7 @@ Yet Another .deb Fetcher
     - [X] Cleanup
     - [X] Downloading specific versions
     - [X] Fix things being marked as installed even when apt fails
-    - [ ] Allow user to choose candidate if filtering doesn't work correctly
+    - [X] Allow user to choose candidate if filtering doesn't work correctly
     - [ ] Allow user to disable filtering and directly choosing a candidate
     - [ ] Installing multiple packages at once
 - [ ] Remove command

@@ -163,7 +163,7 @@ func githubFormatCandidates(candidates *map[string]string, json string, index in
 	}
 
 	if len(*candidates) != 1 {
-		return fmt.Errorf("too many candidates (TODO: let user choose)")
+		installUserChoice(*candidates)
 	}
 
 	return nil

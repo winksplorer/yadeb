@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"maps"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -96,8 +97,8 @@ func filterCandidates(candidates map[string]string) error {
 	}
 
 	if !archSpecific {
-		fmt.Println() // WOW this is shit
-		return fmt.Errorf("multiple package files yet no architecture information (TODO: let user choose)")
+		installUserChoice(candidates)
+		return nil
 	}
 
 	// look for current architecture
@@ -147,4 +148,23 @@ func candidateInstall(user, repo, tempDir, tag, downloadLink string, u *url.URL)
 	}
 
 	return cleanupDir(tempDir)
+}
+
+// asks user which remaining candidate to install
+func installUserChoice(candidates map[string]string) {
+	fmt.Println("There are multiple package files that can be installed. Choose which one to install:")
+
+	candidateValues := slices.Collect(maps.Values(candidates))
+	valid := false
+	index := 0
+
+	slices.Sort(candidateValues)
+
+	for !valid {
+		valid, index = numberedMenu(candidateValues)
+	}
+
+	mapFilter(candidates, func(v string) bool {
+		return v != candidateValues[index]
+	})
 }

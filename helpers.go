@@ -155,3 +155,21 @@ func createTempDir() (string, error) {
 
 	return tempDir, nil
 }
+
+// creates a "unix-style" numbered menu.
+// returns: valid, selected index
+func numberedMenu(values []string) (bool, int) {
+	for i, v := range values {
+		fmt.Printf("[%d] %s\n", i+1, v)
+	}
+
+	fmt.Print("Enter your option: ")
+	var choice int
+	_, err := fmt.Scan(&choice)
+	if err != nil || choice < 1 || choice > len(values) {
+		fmt.Println("Invalid choice")
+		return false, 0
+	}
+
+	return true, choice - 1
+}
