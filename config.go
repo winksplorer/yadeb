@@ -14,17 +14,17 @@ import (
 func createConfigDir() error {
 	if _, err := os.Stat("/etc/yadeb"); err != nil {
 		if os.IsNotExist(err) {
-			err := os.Mkdir("/etc/yadeb", 0644)
+			err := os.Mkdir("/etc/yadeb", 0755)
 			if err != nil {
 				return err
-			}
-
-			if err = createConfig(); err != nil {
-				return fmt.Errorf("createConfig: %s", err.Error())
 			}
 		} else {
 			return err
 		}
+	}
+
+	if err := createConfig(); err != nil {
+		return fmt.Errorf("createConfig: %s", err.Error())
 	}
 
 	return nil
@@ -42,11 +42,15 @@ func createConfig() error {
 				return err
 			}
 
-			if _, err = sec.NewKey("version", Version); err != nil {
+			if _, err = sec.NewKey("Version", Version); err != nil {
 				return err
 			}
 
-			if _, err = sec.NewKey("allowPrerelease", "false"); err != nil {
+			if _, err = sec.NewKey("AllowPrerelease", "false"); err != nil {
+				return err
+			}
+
+			if _, err = sec.NewKey("ReleaseDepth", "50"); err != nil {
 				return err
 			}
 

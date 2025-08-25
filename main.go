@@ -28,8 +28,7 @@ var (
 
 const (
 	// green "done" string
-	doneMsg      string = " \033[92mDone\033[0m"
-	releaseDepth int    = 50
+	doneMsg string = " \033[92mDone\033[0m"
 )
 
 type (

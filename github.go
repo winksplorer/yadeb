@@ -8,10 +8,11 @@ import (
 	"strings"
 
 	"github.com/tidwall/gjson"
+	"gopkg.in/ini.v1"
 )
 
 // github-specific install code
-func githubCmdInstall(u *url.URL, tagFlag string) int {
+func githubCmdInstall(u *url.URL, tagFlag string, cfg *ini.File) int {
 	// get user and repo
 	pathParts := strings.Split(u.Path, "/")
 	if len(pathParts) < 3 {
@@ -29,7 +30,7 @@ func githubCmdInstall(u *url.URL, tagFlag string) int {
 
 	// get releases
 	fmt.Printf("Asking GitHub for releases on \"%s/%s\"...", user, repo)
-	releaseJson, err := githubGetReleases(user, repo)
+	releaseJson, err := githubGetReleases(user, repo, cfg.Section("yadeb").Key("ReleaseDepth").MustInt(50))
 	if err != nil {
 		lnAnsiError("Couldn't get GitHub releases:", err.Error())
 		return 1
@@ -52,6 +53,11 @@ func githubCmdInstall(u *url.URL, tagFlag string) int {
 		for i := range gjson.Get(releaseJson, "#").Int() {
 			// get tag
 			tag = gjson.Get(releaseJson, fmt.Sprintf("%d.tag_name", i)).String()
+
+			if !cfg.Section("yadeb").Key("AllowPrerelease").MustBool(false) && gjson.Get(releaseJson, fmt.Sprintf("%d.prerelease", i)).Bool() {
+				fmt.Printf("Skipping release %s: \033[91mrelease is a prerelease, which is disallowed\033[0m\n", tag)
+				continue
+			}
 
 			if err := githubFormatCandidates(&candidates, releaseJson, i); err != nil {
 				fmt.Printf("Skipping release %s: \033[91m%s\033[0m\n", tag, err.Error())
@@ -98,7 +104,7 @@ func githubCmdInstall(u *url.URL, tagFlag string) int {
 }
 
 // uses github api to get repo's releases
-func githubGetReleases(user, repo string) (string, error) {
+func githubGetReleases(user, repo string, releaseDepth int) (string, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.github.com/repos/%s/%s/releases?per_page=%d", user, repo, releaseDepth), nil)
 	if err != nil {
 		return "", err

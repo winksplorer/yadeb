@@ -10,6 +10,8 @@ import (
 	"slices"
 	"strings"
 	"syscall"
+
+	"gopkg.in/ini.v1"
 )
 
 // the install command
@@ -26,6 +28,12 @@ func cmdInstall(links []string, tagFlag string) int {
 
 	if err := createConfigDir(); err != nil {
 		ansiError("Couldn't create (or check existence of) /etc/yadeb")
+		return 1
+	}
+
+	cfg, err := ini.Load("/etc/yadeb/config.ini")
+	if err != nil {
+		ansiError("Couldn't read /etc/yadeb/config.ini")
 		return 1
 	}
 
@@ -67,7 +75,7 @@ func cmdInstall(links []string, tagFlag string) int {
 	// decide what to do based on domain
 	switch u.Host {
 	case "github.com":
-		return githubCmdInstall(u, tagFlag)
+		return githubCmdInstall(u, tagFlag, cfg)
 	default:
 		ansiError("Unknown source domain:", u.Host)
 		return 2
