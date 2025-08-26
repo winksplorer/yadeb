@@ -124,16 +124,16 @@ func aptChown(path string) error {
 	return os.Chown(path, uid, 0)
 }
 
-// removes directory, output is return code
-func cleanupDir(path string) int {
+// removes directory
+func cleanupDir(path string) error {
 	fmt.Print("\nCleaning up...")
 	if err := os.RemoveAll(path); err != nil {
-		lnAnsiError(fmt.Sprintf("Couldn't delete %s:", path), err.Error())
-		return 1
+		fmt.Println()
+		return fmt.Errorf("couldn't delete %s: %s", path, err)
 	}
 	fmt.Println(doneMsg)
 
-	return 0
+	return nil
 }
 
 // creates /tmp/yadeb-16 char b64 string/

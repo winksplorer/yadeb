@@ -72,14 +72,45 @@ func cmdInstall(links []string, tagFlag string) int {
 		allArchitectures = append(allArchitectures, v...)
 	}
 
+	var (
+		candidates *map[string]string
+		pkgName    string
+		tag        string
+	)
+
 	// decide what to do based on domain
 	switch u.Host {
 	case "github.com":
-		return githubCmdInstall(u, tagFlag, cfg)
+		candidates, pkgName, tag, err = githubGetCandidates(u, tagFlag, cfg)
 	default:
 		ansiError("Unknown source domain:", u.Host)
 		return 2
 	}
+
+	if err != nil {
+		ansiError("Failed to get candidates:", err.Error())
+		return 1
+	}
+
+	// generate tmp dir
+	tempDir, err := createTempDir()
+	if err != nil {
+		ansiError("Couldn't create temp directory:", err.Error())
+		return 1
+	}
+
+	// downlad the remaining candidate
+	for _, v := range *candidates {
+		if err := candidateInstall(pkgName, tempDir, tag, v, u); err != nil {
+			ansiError(fmt.Sprintf("Couldn't install %s: %s", pkgName, err.Error()))
+			return 1
+		}
+
+		return 0
+	}
+
+	ansiError("No candidate to install, somehow")
+	return 1
 }
 
 // filters candidates from name
@@ -122,22 +153,22 @@ func filterCandidates(candidates map[string]string) error {
 }
 
 // installs a candidate
-func candidateInstall(user, repo, tempDir, tag, downloadLink string, u *url.URL) int {
+func candidateInstall(pkgName, tempDir, tag, downloadLink string, u *url.URL) error {
 	path := fmt.Sprintf("%s/%s", tempDir, filepath.Base(downloadLink))
 
 	fmt.Printf("Downloading %s from release %s...", filepath.Base(downloadLink), tag)
 	if err := downloadFile(downloadLink, path); err != nil {
-		lnAnsiError("Couldn't download selected candidate:", err.Error())
+		fmt.Println()
 		cleanupDir(tempDir)
-		return 1
+		return fmt.Errorf("couldn't download selected candidate: %s", err.Error())
 	}
 	fmt.Println(doneMsg)
 
-	fmt.Printf("Marking %s/%s as installed...", user, repo)
+	fmt.Printf("Marking %s as installed...", pkgName)
 	if err := markAsInstalled(path, u.String(), tag); err != nil {
-		lnAnsiError(fmt.Sprintf("Couldn't mark %s/%s as installed:", user, repo), err.Error())
+		fmt.Println()
 		cleanupDir(tempDir)
-		return 1
+		return fmt.Errorf("couldn't mark %s as installed: %s", pkgName, err)
 	}
 	fmt.Println(doneMsg)
 
@@ -146,13 +177,15 @@ func candidateInstall(user, repo, tempDir, tag, downloadLink string, u *url.URL)
 		ansiError("Couldn't run APT:", err.Error())
 
 		// if apt fails then unmark it
-		fmt.Printf("Removing installation mark for %s/%s...", user, repo)
+		fmt.Printf("Removing installation mark for %s...", pkgName)
 		if err := unmarkAsInstalled(u.String()); err != nil {
-			lnAnsiError(fmt.Sprintf("Couldn't remove installation mark for %s/%s:", user, repo))
+			fmt.Println()
 			cleanupDir(tempDir)
-			return 1
+			return fmt.Errorf("couldn't remove installation mark for %s: %s", pkgName, err)
 		}
 		fmt.Println(doneMsg)
+
+		return fmt.Errorf("couldn't run apt:", err)
 	}
 
 	return cleanupDir(tempDir)

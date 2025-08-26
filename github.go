@@ -11,35 +11,34 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-// github-specific install code
-func githubCmdInstall(u *url.URL, tagFlag string, cfg *ini.File) int {
+// github-specific candidate collection
+func githubGetCandidates(u *url.URL, tagFlag string, cfg *ini.File) (*map[string]string, string, string, error) {
 	// get user and repo
 	pathParts := strings.Split(u.Path, "/")
 	if len(pathParts) < 3 {
-		ansiError("Invalid GitHub repo link (not enough path parts)")
-		return 2
+		return nil, "", "", fmt.Errorf("invalid github repo link (not enough path parts)")
 	}
 
 	user := pathParts[1]
 	repo := pathParts[2]
 
 	if user == "" || repo == "" {
-		ansiError("Invalid GitHub repo link (empty user or repo)")
-		return 2
+		return nil, "", "", fmt.Errorf("invalid github repo link (empty username or repo name)")
 	}
 
+	pkgName := fmt.Sprintf("%s/%s", user, repo)
+
 	// get releases
-	fmt.Printf("Asking GitHub for releases on \"%s/%s\"...", user, repo)
-	releaseJson, err := githubGetReleases(user, repo, cfg.Section("yadeb").Key("ReleaseDepth").MustInt(50))
+	fmt.Printf("Asking GitHub for releases on %s...", pkgName)
+	releaseJson, err := githubGetReleases(pkgName, cfg.Section("yadeb").Key("ReleaseDepth").MustInt(50))
 	if err != nil {
-		lnAnsiError("Couldn't get GitHub releases:", err.Error())
-		return 1
+		fmt.Println() // Yes, this is bad. Yes, you will see this alot.
+		return nil, "", "", fmt.Errorf("couldn't get github releases: %s", err)
 	}
 	fmt.Println(doneMsg)
 
 	if gjson.Get(releaseJson, "#").Int() == 0 {
-		ansiError("Requested package has no releases available")
-		return 1
+		return nil, "", "", fmt.Errorf("requested package has no releases available")
 	}
 
 	var (
@@ -69,43 +68,27 @@ func githubCmdInstall(u *url.URL, tagFlag string, cfg *ini.File) int {
 		}
 
 		if !validTag {
-			ansiError("No valid release found")
-			return 1
+			return nil, "", "", fmt.Errorf("no valid release found")
 		}
 	} else {
 		foundTag, index := githubTagSearch(releaseJson, tagFlag)
 		if !foundTag {
-			ansiError("Could not find release tagged:", tagFlag)
-			return 2
+			return nil, "", "", fmt.Errorf("release %s: not found", tagFlag)
 		}
 
 		tag = tagFlag
 
 		if err := githubFormatCandidates(&candidates, releaseJson, index); err != nil {
-			ansiError(fmt.Sprintf("Release %s could not be installed: %s", tag, err.Error()))
-			return 1
+			return nil, "", "", fmt.Errorf("release %s: %s", tag, err.Error())
 		}
 	}
 
-	// generate tmp dir
-	tempDir, err := createTempDir()
-	if err != nil {
-		ansiError("Couldn't create temp directory:", err.Error())
-		return 1
-	}
-
-	// downlad the remaining candidate
-	for _, v := range candidates {
-		return candidateInstall(user, repo, tempDir, tag, v, u)
-	}
-
-	ansiError("No candidate to install, somehow")
-	return 1
+	return &candidates, pkgName, tag, nil
 }
 
 // uses github api to get repo's releases
-func githubGetReleases(user, repo string, releaseDepth int) (string, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.github.com/repos/%s/%s/releases?per_page=%d", user, repo, releaseDepth), nil)
+func githubGetReleases(pkgName string, releaseDepth int) (string, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=%d", pkgName, releaseDepth), nil)
 	if err != nil {
 		return "", err
 	}
@@ -131,7 +114,7 @@ func githubGetReleases(user, repo string, releaseDepth int) (string, error) {
 }
 
 // use githubGetReleases to get the json
-func githubGetCandidates(json string, release int64) map[string]string {
+func githubGetCandidatesFromRelease(json string, release int64) map[string]string {
 	assetCount := gjson.Get(json, fmt.Sprintf("%d.assets.#", release)).Int()
 	candidates := make(map[string]string)
 
@@ -162,7 +145,7 @@ func githubFormatCandidates(candidates *map[string]string, json string, index in
 	}
 
 	// get and filter candidates (release files)
-	*candidates = githubGetCandidates(json, index)
+	*candidates = githubGetCandidatesFromRelease(json, index)
 
 	if err := filterCandidates(*candidates); err != nil {
 		return err
