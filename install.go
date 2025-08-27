@@ -92,16 +92,9 @@ func cmdInstall(links []string, tagFlag string) int {
 		return 1
 	}
 
-	// generate tmp dir
-	tempDir, err := createTempDir()
-	if err != nil {
-		ansiError("Couldn't create temp directory:", err.Error())
-		return 1
-	}
-
 	// downlad the remaining candidate
 	for _, v := range *candidates {
-		if err := candidateInstall(pkgName, tempDir, tag, v, u); err != nil {
+		if err := candidateInstall(pkgName, tag, v, u); err != nil {
 			ansiError(fmt.Sprintf("Couldn't install %s: %s", pkgName, err.Error()))
 			return 1
 		}
@@ -153,17 +146,25 @@ func filterCandidates(candidates map[string]string) error {
 }
 
 // installs a candidate
-func candidateInstall(pkgName, tempDir, tag, downloadLink string, u *url.URL) error {
+func candidateInstall(pkgName, tag, downloadLink string, u *url.URL) error {
+	// create
+	tempDir, err := createTempDir()
+	if err != nil {
+		return fmt.Errorf("couldn't create temp directory: %s", err)
+	}
+
 	path := fmt.Sprintf("%s/%s", tempDir, filepath.Base(downloadLink))
 
+	// download
 	fmt.Printf("Downloading %s from release %s...", filepath.Base(downloadLink), tag)
 	if err := downloadFile(downloadLink, path); err != nil {
 		fmt.Println()
-		cleanupDir(tempDir)
-		return fmt.Errorf("couldn't download selected candidate: %s", err.Error())
+		cleanupDir(tempDir) // Yes, I want to use a defer, but I need to return the value at the end so I can't.
+		return fmt.Errorf("couldn't download selected candidate: %s", err)
 	}
 	fmt.Println(doneMsg)
 
+	// mark
 	fmt.Printf("Marking %s as installed...", pkgName)
 	if err := markAsInstalled(path, u.String(), tag); err != nil {
 		fmt.Println()
@@ -172,20 +173,20 @@ func candidateInstall(pkgName, tempDir, tag, downloadLink string, u *url.URL) er
 	}
 	fmt.Println(doneMsg)
 
+	// apt
 	fmt.Print("Starting APT...\n\n")
 	if err := runApt("install", path); err != nil {
-		ansiError("Couldn't run APT:", err.Error())
-
-		// if apt fails then unmark it
+		// if apt fails then unmark the package
 		fmt.Printf("Removing installation mark for %s...", pkgName)
 		if err := unmarkAsInstalled(u.String()); err != nil {
 			fmt.Println()
 			cleanupDir(tempDir)
+			ansiError("couldn't run apt:", err.Error())
 			return fmt.Errorf("couldn't remove installation mark for %s: %s", pkgName, err)
 		}
 		fmt.Println(doneMsg)
 
-		return fmt.Errorf("couldn't run apt:", err)
+		return fmt.Errorf("couldn't run apt: %s", err)
 	}
 
 	return cleanupDir(tempDir)
