@@ -13,16 +13,6 @@ import (
 	"strings"
 )
 
-// filters a string map.
-// check should return true if the item should be removed.
-func mapFilter(m map[string]string, check func(v string) bool) {
-	for k, v := range m {
-		if check(v) {
-			delete(m, k)
-		}
-	}
-}
-
 // return to caveman
 func containsAny(s string, needles []string) bool {
 	for _, n := range needles {

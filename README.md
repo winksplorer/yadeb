@@ -20,7 +20,7 @@ Yet Another .deb Fetcher
     - [X] Downloading specific versions
     - [X] Fix things being marked as installed even when apt fails
     - [X] Allow user to choose candidate if filtering doesn't work correctly
-    - [ ] Installing multiple packages at once
+    - [X] Use slices instead of maps (amateur hour code from me a week ago smh)
 - [ ] Remove command
 - [ ] Purge command
 - [ ] Upgrade command

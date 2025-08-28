@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"maps"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -73,7 +72,7 @@ func cmdInstall(links []string, tagFlag string) int {
 	}
 
 	var (
-		candidates *map[string]string
+		candidates []string
 		pkgName    string
 		tag        string
 	)
@@ -93,30 +92,25 @@ func cmdInstall(links []string, tagFlag string) int {
 	}
 
 	// downlad the remaining candidate
-	for _, v := range *candidates {
-		if err := candidateInstall(pkgName, tag, v, u); err != nil {
-			ansiError(fmt.Sprintf("Couldn't install %s: %s", pkgName, err.Error()))
-			return 1
-		}
-
-		return 0
+	if err := candidateInstall(pkgName, tag, candidates[0], u); err != nil {
+		ansiError(fmt.Sprintf("Couldn't install %s: %s", pkgName, err.Error()))
+		return 1
 	}
 
-	ansiError("No candidate to install, somehow")
-	return 1
+	return 0
 }
 
 // filters candidates from name
-func filterCandidates(candidates map[string]string) error {
+func filterCandidates(candidates []string) ([]string, error) {
 	// .deb filtering
-	mapFilter(candidates, func(v string) bool {
+	candidates = slices.DeleteFunc(candidates, func(v string) bool {
 		return !strings.HasSuffix(v, ".deb")
 	})
 
 	if len(candidates) == 1 {
-		return nil
+		return candidates, nil
 	} else if len(candidates) == 0 {
-		return fmt.Errorf("no package files found")
+		return candidates, fmt.Errorf("no package files found")
 	}
 
 	// match any arch to see if they exist
@@ -130,19 +124,19 @@ func filterCandidates(candidates map[string]string) error {
 
 	if !archSpecific {
 		installUserChoice(candidates)
-		return nil
+		return candidates, nil
 	}
 
 	// look for current architecture
-	mapFilter(candidates, func(v string) bool {
+	candidates = slices.DeleteFunc(candidates, func(v string) bool {
 		return !containsAny(v, architectureAliases[runtime.GOARCH])
 	})
 
 	if len(candidates) == 0 {
-		return fmt.Errorf("no package files for %s", runtime.GOARCH)
+		return candidates, fmt.Errorf("no package files for %s", runtime.GOARCH)
 	}
 
-	return nil
+	return candidates, nil
 }
 
 // installs a candidate
@@ -193,20 +187,20 @@ func candidateInstall(pkgName, tag, downloadLink string, u *url.URL) error {
 }
 
 // asks user which remaining candidate to install
-func installUserChoice(candidates map[string]string) {
+func installUserChoice(candidates []string) []string {
 	fmt.Println("There are multiple package files that can be installed. Choose which one to install:")
-
-	candidateValues := slices.Collect(maps.Values(candidates))
 	valid := false
 	index := 0
 
-	slices.Sort(candidateValues)
+	slices.Sort(candidates)
 
 	for !valid {
-		valid, index = numberedMenu(candidateValues)
+		valid, index = numberedMenu(candidates)
 	}
 
-	mapFilter(candidates, func(v string) bool {
-		return v != candidateValues[index]
+	wantedVal := candidates[index]
+
+	return slices.DeleteFunc(candidates, func(v string) bool {
+		return v != wantedVal
 	})
 }

@@ -12,7 +12,7 @@ import (
 )
 
 // github-specific candidate collection
-func githubGetCandidates(u *url.URL, tagFlag string, cfg *ini.File) (*map[string]string, string, string, error) {
+func githubGetCandidates(u *url.URL, tagFlag string, cfg *ini.File) ([]string, string, string, error) {
 	// get user and repo
 	pathParts := strings.Split(u.Path, "/")
 	if len(pathParts) < 3 {
@@ -42,7 +42,7 @@ func githubGetCandidates(u *url.URL, tagFlag string, cfg *ini.File) (*map[string
 	}
 
 	var (
-		candidates map[string]string
+		candidates []string
 		tag        string
 		validTag   bool
 	)
@@ -58,7 +58,8 @@ func githubGetCandidates(u *url.URL, tagFlag string, cfg *ini.File) (*map[string
 				continue
 			}
 
-			if err := githubFormatCandidates(&candidates, releaseJson, i); err != nil {
+			candidates, err = githubFormatCandidates(releaseJson, i)
+			if err != nil {
 				fmt.Printf("Skipping release %s: \033[91m%s\033[0m\n", tag, err.Error())
 				continue
 			}
@@ -78,12 +79,13 @@ func githubGetCandidates(u *url.URL, tagFlag string, cfg *ini.File) (*map[string
 
 		tag = tagFlag
 
-		if err := githubFormatCandidates(&candidates, releaseJson, index); err != nil {
+		candidates, err = githubFormatCandidates(releaseJson, index)
+		if err != nil {
 			return nil, "", "", fmt.Errorf("release %s: %s", tag, err.Error())
 		}
 	}
 
-	return &candidates, pkgName, tag, nil
+	return candidates, pkgName, tag, nil
 }
 
 // uses github api to get repo's releases
@@ -114,13 +116,13 @@ func githubGetReleases(pkgName string, releaseDepth int) (string, error) {
 }
 
 // use githubGetReleases to get the json
-func githubGetCandidatesFromRelease(json string, release int64) map[string]string {
+func githubGetCandidatesFromRelease(json string, release int64) []string {
 	assetCount := gjson.Get(json, fmt.Sprintf("%d.assets.#", release)).Int()
-	candidates := make(map[string]string)
+	var candidates []string
 
 	for i := range assetCount {
 		assetPath := fmt.Sprintf("%d.assets.%d", release, i)
-		candidates[gjson.Get(json, assetPath+".name").String()] = gjson.Get(json, assetPath+".browser_download_url").String()
+		candidates = append(candidates, gjson.Get(json, assetPath+".browser_download_url").String())
 	}
 
 	return candidates
@@ -138,22 +140,23 @@ func githubTagSearch(json, tag string) (bool, int64) {
 	return false, 0
 }
 
-func githubFormatCandidates(candidates *map[string]string, json string, index int64) error {
+func githubFormatCandidates(json string, index int64) ([]string, error) {
 	// check if any assets are available
 	if gjson.Get(json, fmt.Sprintf("%d.assets.#", index)).Int() == 0 {
-		return fmt.Errorf("no assets available")
+		return nil, fmt.Errorf("no assets available")
 	}
 
 	// get and filter candidates (release files)
-	*candidates = githubGetCandidatesFromRelease(json, index)
+	candidates := githubGetCandidatesFromRelease(json, index)
+	candidates, err := filterCandidates(candidates)
 
-	if err := filterCandidates(*candidates); err != nil {
-		return err
+	if err != nil {
+		return candidates, err
 	}
 
-	if len(*candidates) != 1 {
-		installUserChoice(*candidates)
+	if len(candidates) != 1 {
+		installUserChoice(candidates)
 	}
 
-	return nil
+	return candidates, nil
 }
