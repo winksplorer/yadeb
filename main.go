@@ -34,7 +34,7 @@ const (
 type (
 	// a tracked "package"
 	Package struct {
-		Name         string
+		Package      string
 		Link         string
 		InstalledTag string
 		InstallDate  time.Time
@@ -49,23 +49,25 @@ func main() {
 		os.Exit(2)
 	}
 
+	fs := flag.NewFlagSet(os.Args[1], flag.ExitOnError)
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s %s [options] [links]\n\n", os.Args[0], os.Args[1])
+		fmt.Fprintf(os.Stderr, "All options:\n")
+		fs.PrintDefaults()
+	}
+
 	switch os.Args[1] {
 	case "-v", "--version":
 		fmt.Printf("yadeb v%s (built on %s)\n", Version, BuildDate)
 	case "install":
-		fs := flag.NewFlagSet("install", flag.ExitOnError)
-		fs.Usage = func() {
-			fmt.Fprintf(os.Stderr, "Usage: %s install [options] [links]\n\n", os.Args[0])
-			fmt.Fprintf(os.Stderr, "All options:\n")
-			fs.PrintDefaults()
-		}
-
 		tagFlag := fs.String("tag", "latest", "Release/GitHub tag")
 
 		fs.Parse(os.Args[2:])
-
 		os.Exit(cmdInstall(fs.Args(), *tagFlag))
-	case "remove", "purge", "upgrade", "upgrade-all", "list", "pin", "selfhost":
+	case "remove", "purge":
+		fs.Parse(os.Args[2:])
+		os.Exit(cmdRemove(fs.Args()))
+	case "upgrade", "upgrade-all", "list", "pin", "selfhost":
 		fmt.Println("not implemented")
 		os.Exit(2)
 	default:

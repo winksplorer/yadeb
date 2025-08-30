@@ -21,8 +21,11 @@ Yet Another .deb Fetcher
     - [X] Fix things being marked as installed even when apt fails
     - [X] Allow user to choose candidate if filtering doesn't work correctly
     - [X] Use slices instead of maps (amateur hour code from me a week ago smh)
-- [ ] Remove command
-- [ ] Purge command
+- [ ] Remove/purge command
+    - [X] Link parsing
+    - [X] Actually removing through apt
+    - [X] Removing installation mark
+    - [ ] Logging
 - [ ] Upgrade command
 - [ ] Upgrade-all command
 - [ ] List command
