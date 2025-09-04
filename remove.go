@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 	"syscall"
 )
@@ -17,15 +18,26 @@ func cmdRemove(links []string) int {
 		return 2
 	}
 
-	// "normalize" the url (this might still cause issues)
+	// "normalize" the url
 	raw := links[0]
 	if !strings.Contains(raw, "://") {
 		raw = "https://" + raw
 	}
 
+	// parse link
+	u, err := url.Parse(raw)
+	if err != nil {
+		ansiError("Couldn't parse link:", err.Error())
+		return 1
+	}
+
+	// get user and repo
+	pkgName, _ := strings.CutPrefix(u.Path, "/")
+
+	fmt.Printf("Checking if %s is installed...", pkgName)
 	p, err := getPackage(raw)
 	if err != nil {
-		ansiError("Couldn't read installed package database:", err.Error())
+		lnAnsiError("Couldn't read installed package database:", err.Error())
 		return 1
 	}
 
@@ -34,6 +46,7 @@ func cmdRemove(links []string) int {
 		ansiError("Requested package isn't installed")
 		return 1
 	}
+	fmt.Println(doneMsg)
 
 	// actually uninstall
 	fmt.Print("Starting APT...\n\n")
@@ -42,10 +55,12 @@ func cmdRemove(links []string) int {
 		return 1
 	}
 
+	fmt.Printf("\n\nRemoving installation mark from %s...", pkgName)
 	if err := unmarkAsInstalled(raw); err != nil {
 		ansiError("Couldn't remove installation mark:", err.Error())
 		return 1
 	}
+	fmt.Println(doneMsg)
 
 	return 0
 }

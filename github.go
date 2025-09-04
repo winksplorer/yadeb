@@ -14,19 +14,7 @@ import (
 // github-specific candidate collection
 func githubGetCandidates(u *url.URL, tagFlag string, cfg *ini.File) ([]string, string, string, error) {
 	// get user and repo
-	pathParts := strings.Split(u.Path, "/")
-	if len(pathParts) < 3 {
-		return nil, "", "", fmt.Errorf("invalid github repo link (not enough path parts)")
-	}
-
-	user := pathParts[1]
-	repo := pathParts[2]
-
-	if user == "" || repo == "" {
-		return nil, "", "", fmt.Errorf("invalid github repo link (empty username or repo name)")
-	}
-
-	pkgName := fmt.Sprintf("%s/%s", user, repo)
+	pkgName, _ := strings.CutPrefix(u.Path, "/")
 
 	// get releases
 	fmt.Printf("Asking GitHub for releases on %s...", pkgName)

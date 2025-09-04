@@ -5,7 +5,7 @@ Yet Another .deb Fetcher
 
 - [X] Basic CLI
     - [X] Help menu
-- [ ] Install command
+- [X] Install command
     - [X] Link parsing
     - [X] GitHub release fetching
     - [X] GitHub release parsing
@@ -25,7 +25,8 @@ Yet Another .deb Fetcher
     - [X] Link parsing
     - [X] Actually removing through apt
     - [X] Removing installation mark
-    - [ ] Logging
+    - [X] Logging
+    - [ ] Purging
 - [ ] Upgrade command
 - [ ] Upgrade-all command
 - [ ] List command
