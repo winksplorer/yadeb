@@ -1,6 +1,6 @@
 # yadeb
 
-Yet Another .deb Fetcher
+A utility for managing .deb packages directly from GitHub releases.
 
 ## TODO
 
