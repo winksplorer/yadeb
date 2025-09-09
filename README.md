@@ -1,4 +1,5 @@
 # yadeb
+
 Yet Another .deb Fetcher
 
 ## TODO
@@ -35,5 +36,3 @@ Yet Another .deb Fetcher
     - [X] Cleanup
 - [ ] Upgrade-all command
 - [ ] List command
-- [ ] Selfhost command
-- [ ] Pin command

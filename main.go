@@ -70,7 +70,7 @@ func main() {
 	case "upgrade":
 		fs.Parse(os.Args[2:])
 		os.Exit(cmdUpgrade(fs.Args()))
-	case "upgrade-all", "list", "pin", "selfhost":
+	case "upgrade-all", "list":
 		fmt.Println("not implemented")
 		os.Exit(2)
 	default:
@@ -92,8 +92,6 @@ func helpMenu() {
 			"  upgrade - upgrades packages\n"+
 			"  upgrade-all - upgrades all installed packages\n"+
 			"  list - lists installed packages\n"+
-			"  pin - pins a package to a specific version\n"+
-			"  selfhost - reinstalls yadeb itself as a package\n\n"+
 			"For more info about a command, type '%s <command> --help'.\n",
 
 		Version, BuildDate, os.Args[0], os.Args[0],
