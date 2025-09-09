@@ -34,5 +34,8 @@ Yet Another .deb Fetcher
     - [X] Marking as updated
     - [X] Logging
     - [X] Cleanup
+- [X] List command
+    - [X] Find installed packages
+    - [X] List them
+    - [X] Fix dates
 - [ ] Upgrade-all command
-- [ ] List command

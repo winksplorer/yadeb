@@ -8,6 +8,7 @@ import (
 	"syscall"
 )
 
+// the remove command
 func cmdRemove(links []string) int {
 	if len(links) == 0 {
 		ansiError("Nothing to remove")

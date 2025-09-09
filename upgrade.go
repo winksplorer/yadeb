@@ -50,7 +50,7 @@ func cmdUpgrade(links []string) int {
 	}
 
 	// error out if unknown scheme
-	if !slices.Contains([]string{"http", "https", ""}, u.Scheme) {
+	if !slices.Contains([]string{"https", ""}, u.Scheme) {
 		ansiError("Unknown source scheme:", u.Scheme)
 		return 2
 	}
