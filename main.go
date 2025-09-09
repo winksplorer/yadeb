@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"time"
+	"strings"
 )
 
 var (
@@ -37,8 +37,8 @@ type (
 		Package      string
 		Link         string
 		InstalledTag string
-		InstallDate  time.Time
-		LastUpdate   time.Time
+		InstallDate  string
+		LastUpdate   string
 	}
 )
 
@@ -70,7 +70,25 @@ func main() {
 	case "upgrade":
 		fs.Parse(os.Args[2:])
 		os.Exit(cmdUpgrade(fs.Args()))
-	case "upgrade-all", "list":
+	case "list":
+		pkgs, err := getAllPackages()
+		if err != nil {
+			ansiError(err.Error())
+		}
+
+		if pkgs == nil {
+			return
+		}
+
+		for _, p := range pkgs {
+			if p.Link == "DEFAULT" {
+				continue
+			}
+
+			shortLink, _ := strings.CutPrefix(p.Link, "https://")
+			fmt.Printf("\033[92m%s\033[0m: %s %s\nInstalled on %s, Last updated on %s\n\n", shortLink, p.Package, p.InstalledTag, p.InstallDate, p.LastUpdate)
+		}
+	case "upgrade-all":
 		fmt.Println("not implemented")
 		os.Exit(2)
 	default:

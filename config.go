@@ -220,3 +220,33 @@ func getPackage(link string) (*Package, error) {
 
 	return nil, nil
 }
+
+// gets all tracked packages
+func getAllPackages() ([]Package, error) {
+	if _, err := os.Stat("/etc/yadeb/installed.ini"); err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		} else {
+			return nil, err
+		}
+	}
+
+	cfg, err := ini.Load("/etc/yadeb/installed.ini")
+	if err != nil {
+		return nil, err
+	}
+
+	var pkgs []Package
+
+	for _, section := range cfg.Sections() {
+		var p Package
+		p.Link = section.Name()
+		if err = section.MapTo(&p); err != nil {
+			return nil, err
+		}
+
+		pkgs = append(pkgs, p)
+	}
+
+	return pkgs, nil
+}
