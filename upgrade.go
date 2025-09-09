@@ -112,8 +112,15 @@ func cmdUpgrade(links []string) int {
 		return 0
 	}
 
+	pii := PackageToInstall{
+		Name:         pkgName,
+		Tag:          tag,
+		DownloadLink: candidates[0],
+		Url:          u,
+	}
+
 	// downlad the remaining candidate
-	if err := candidateUpgrade(pkgName, tag, candidates[0], u); err != nil {
+	if err := candidateUpgrade(pii); err != nil {
 		ansiError(fmt.Sprintf("Couldn't upgrade %s: %s", pkgName, err.Error()))
 		return 1
 	}
@@ -121,39 +128,141 @@ func cmdUpgrade(links []string) int {
 	return 0
 }
 
-// upgrades a candidate
-func candidateUpgrade(pkgName, tag, downloadLink string, u *url.URL) error {
+// the upgrade command
+func cmdUpgradeAll() int {
+	if syscall.Geteuid() != 0 {
+		ansiError("Installation requires root privileges")
+		return 2
+	}
+
+	if err := createConfigDir(); err != nil {
+		ansiError("Couldn't create (or check existence of) /etc/yadeb")
+		return 1
+	}
+
+	cfg, err := ini.Load("/etc/yadeb/config.ini")
+	if err != nil {
+		ansiError("Couldn't read /etc/yadeb/config.ini")
+		return 1
+	}
+
+	// init architecture slice
+	for _, v := range architectureAliases {
+		allArchitectures = append(allArchitectures, v...)
+	}
+
+	var pii []PackageToInstall
+
+	pkgs, err := getAllPackages()
+	if err != nil {
+		ansiError(err.Error())
+	}
+
+	if pkgs == nil {
+		return 0
+	}
+
+	for _, p := range pkgs {
+		if p.Link == "DEFAULT" {
+			continue
+		}
+
+		// parse link
+		u, err := url.Parse(p.Link)
+		if err != nil {
+			ansiError("Couldn't parse link:", err.Error())
+			return 1
+		}
+
+		// decide what to do based on domain
+		switch u.Host {
+		case "github.com":
+			// get user and repo
+			pkgName, _ := strings.CutPrefix(u.Path, "/")
+
+			// get releases
+			fmt.Printf("Asking GitHub for releases on %s...", pkgName)
+			releaseJson, err := githubGetReleases(pkgName, cfg.Section("yadeb").Key("ReleaseDepth").MustInt(50))
+			if err != nil {
+				lnAnsiError("couldn't get github releases:", err.Error())
+				return 1
+			}
+			fmt.Println(doneMsg)
+
+			if gjson.Get(releaseJson, "#").Int() == 0 {
+				lnAnsiError("requested package has no releases available")
+				continue
+			}
+
+			tag, candidates, err := githubFindLatestRelease(releaseJson, cfg)
+			if err != nil {
+				lnAnsiError(err.Error())
+				return 1
+			}
+
+			if p.InstalledTag == tag {
+				fmt.Fprintln(os.Stderr, u.String(), "is already at the latest version")
+				continue
+			}
+
+			pii = append(pii, PackageToInstall{
+				Name:         pkgName,
+				Tag:          tag,
+				DownloadLink: candidates[0],
+				Url:          u,
+			})
+		default:
+			ansiError("Unknown source domain:", u.Host)
+			return 2
+		}
+	}
+
+	if len(pii) == 0 {
+		return 0
+	}
+
+	// downlad the remaining candidate
+	if err := candidateUpgrade(pii...); err != nil {
+		ansiError(fmt.Sprintf("Couldn't upgrade everything: %s", err.Error()))
+		return 1
+	}
+
+	return 0
+}
+
+// upgrades candidates
+func candidateUpgrade(pkgs ...PackageToInstall) error {
 	// create
 	tempDir, err := createTempDir()
 	if err != nil {
 		return fmt.Errorf("couldn't create temp directory: %s", err)
 	}
 
-	path := fmt.Sprintf("%s/%s", tempDir, filepath.Base(downloadLink))
+	for _, p := range pkgs {
+		path := fmt.Sprintf("%s/%s", tempDir, filepath.Base(p.DownloadLink))
 
-	// download
-	fmt.Printf("Downloading %s from release %s...", filepath.Base(downloadLink), tag)
-	if err := downloadFile(downloadLink, path); err != nil {
-		fmt.Println()
-		cleanupDir(tempDir) // Yes, I want to use a defer, but I need to return the value at the end so I can't.
-		return fmt.Errorf("couldn't download selected candidate: %s", err)
-	}
-	fmt.Println(doneMsg)
+		// download
+		fmt.Printf("Downloading %s from %s at tag %s...", filepath.Base(p.DownloadLink), p.Name, p.Tag)
+		if err := downloadFile(p.DownloadLink, path); err != nil {
+			lnAnsiError(fmt.Sprintf("Couldn't download %s:", p.Name), err.Error())
+			continue
+		}
+		fmt.Println(doneMsg)
 
-	// apt
-	fmt.Print("Starting APT (install)...\n\n")
-	if err := runApt("install", path); err != nil {
-		return fmt.Errorf("couldn't run apt: %s", err)
-	}
+		// apt
+		fmt.Print("Starting APT (install)...\n\n")
+		if err := runApt("install", "-y", path); err != nil {
+			ansiError("Couldn't run apt: %s", err.Error())
+			continue
+		}
 
-	// mark
-	fmt.Printf("Marking %s as updated...", pkgName)
-	if err := updatePackageMark(u.String(), tag); err != nil {
-		fmt.Println()
-		cleanupDir(tempDir)
-		return fmt.Errorf("couldn't mark %s as updated: %s", pkgName, err)
+		// mark
+		fmt.Printf("Marking %s as updated...", p.Name)
+		if err := updatePackageMark(p.Url.String(), p.Tag); err != nil {
+			ansiError(fmt.Sprintf("Couldn't mark %s as updated:", p.Name), err.Error())
+		}
+		fmt.Println(doneMsg)
 	}
-	fmt.Println(doneMsg)
 
 	return cleanupDir(tempDir)
 }

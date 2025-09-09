@@ -38,4 +38,4 @@ Yet Another .deb Fetcher
     - [X] Find installed packages
     - [X] List them
     - [X] Fix dates
-- [ ] Upgrade-all command
+- [X] Upgrade-all command

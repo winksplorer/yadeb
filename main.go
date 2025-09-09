@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 )
@@ -39,6 +40,13 @@ type (
 		InstalledTag string
 		InstallDate  string
 		LastUpdate   string
+	}
+
+	PackageToInstall struct {
+		Name         string
+		Tag          string
+		DownloadLink string
+		Url          *url.URL
 	}
 )
 
@@ -89,8 +97,7 @@ func main() {
 			fmt.Printf("\033[92m%s\033[0m: %s %s\nInstalled on %s, Last updated on %s\n\n", shortLink, p.Package, p.InstalledTag, p.InstallDate, p.LastUpdate)
 		}
 	case "upgrade-all":
-		fmt.Println("not implemented")
-		os.Exit(2)
+		os.Exit(cmdUpgradeAll())
 	default:
 		helpMenu()
 		os.Exit(2)
