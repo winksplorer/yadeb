@@ -158,6 +158,39 @@ func unmarkAsInstalled(link string) error {
 	return nil
 }
 
+// updates a package's install mark
+func updatePackageMark(link, tag string) error {
+	// file not exist logic
+	if _, err := os.Stat("/etc/yadeb/installed.ini"); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("install database doesn't exist")
+		} else {
+			return err
+		}
+	}
+
+	// load
+	cfg, err := ini.Load("/etc/yadeb/installed.ini")
+	if err != nil {
+		return err
+	}
+
+	// update
+	for _, sec := range cfg.Sections() {
+		if sec.Name() == link {
+			sec.Key("InstalledTag").SetValue(tag)
+			sec.Key("LastUpdate").SetValue(time.Now().Format("2006-01-02"))
+		}
+	}
+
+	// save
+	if err = cfg.SaveTo("/etc/yadeb/installed.ini"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // gets a tracked package by link
 func getPackage(link string) (*Package, error) {
 	if _, err := os.Stat("/etc/yadeb/installed.ini"); err != nil {

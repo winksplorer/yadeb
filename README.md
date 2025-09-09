@@ -27,7 +27,12 @@ Yet Another .deb Fetcher
     - [X] Removing installation mark
     - [X] Logging
     - [X] Purging
-- [ ] Upgrade command
+- [X] Upgrade command
+    - [X] Link parsing
+    - [X] Checking if latest is already installed
+    - [X] Marking as updated
+    - [X] Logging
+    - [X] Cleanup
 - [ ] Upgrade-all command
 - [ ] List command
 - [ ] Selfhost command

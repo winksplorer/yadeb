@@ -20,7 +20,7 @@ func githubGetCandidates(u *url.URL, tagFlag string, cfg *ini.File) ([]string, s
 	fmt.Printf("Asking GitHub for releases on %s...", pkgName)
 	releaseJson, err := githubGetReleases(pkgName, cfg.Section("yadeb").Key("ReleaseDepth").MustInt(50))
 	if err != nil {
-		fmt.Println() // Yes, this is bad. Yes, you will see this alot.
+		fmt.Println() // Yes, this is bad. Yes, you will see this a lot.
 		return nil, "", "", fmt.Errorf("couldn't get github releases: %s", err)
 	}
 	fmt.Println(doneMsg)
