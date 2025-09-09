@@ -32,32 +32,13 @@ func githubGetCandidates(u *url.URL, tagFlag string, cfg *ini.File) ([]string, s
 	var (
 		candidates []string
 		tag        string
-		validTag   bool
 	)
 
 	// go through releases
 	if tagFlag == "latest" {
-		for i := range gjson.Get(releaseJson, "#").Int() {
-			// get tag
-			tag = gjson.Get(releaseJson, fmt.Sprintf("%d.tag_name", i)).String()
-
-			if !cfg.Section("yadeb").Key("AllowPrerelease").MustBool(false) && gjson.Get(releaseJson, fmt.Sprintf("%d.prerelease", i)).Bool() {
-				fmt.Printf("Skipping release %s: \033[91mrelease is a prerelease, which is disallowed\033[0m\n", tag)
-				continue
-			}
-
-			candidates, err = githubFormatCandidates(releaseJson, i)
-			if err != nil {
-				fmt.Printf("Skipping release %s: \033[91m%s\033[0m\n", tag, err.Error())
-				continue
-			}
-
-			validTag = true
-			break
-		}
-
-		if !validTag {
-			return nil, "", "", fmt.Errorf("no valid release found")
+		tag, candidates, err = githubFindLatestRelease(releaseJson, cfg)
+		if err != nil {
+			return nil, "", "", err
 		}
 	} else {
 		foundTag, index := githubTagSearch(releaseJson, tagFlag)
@@ -101,6 +82,28 @@ func githubGetReleases(pkgName string, releaseDepth int) (string, error) {
 	}
 
 	return string(body), nil
+}
+
+func githubFindLatestRelease(json string, cfg *ini.File) (string, []string, error) {
+	for i := range gjson.Get(json, "#").Int() {
+		// get tag
+		tag := gjson.Get(json, fmt.Sprintf("%d.tag_name", i)).String()
+
+		if !cfg.Section("yadeb").Key("AllowPrerelease").MustBool(false) && gjson.Get(json, fmt.Sprintf("%d.prerelease", i)).Bool() {
+			fmt.Printf("Skipping release %s: \033[91mrelease is a prerelease, which is disallowed\033[0m\n", tag)
+			continue
+		}
+
+		candidates, err := githubFormatCandidates(json, i)
+		if err != nil {
+			fmt.Printf("Skipping release %s: \033[91m%s\033[0m\n", tag, err.Error())
+			continue
+		}
+
+		return tag, candidates, nil
+	}
+
+	return "", nil, fmt.Errorf("no valid release found")
 }
 
 // use githubGetReleases to get the json

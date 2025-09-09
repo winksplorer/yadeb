@@ -67,7 +67,10 @@ func main() {
 	case "remove", "purge":
 		fs.Parse(os.Args[2:])
 		os.Exit(cmdRemove(fs.Args()))
-	case "upgrade", "upgrade-all", "list", "pin", "selfhost":
+	// case "upgrade":
+	// 	fs.Parse(os.Args[2:])
+	// 	os.Exit(cmdUpgrade(fs.Args()))
+	case "upgrade-all", "list", "pin", "selfhost":
 		fmt.Println("not implemented")
 		os.Exit(2)
 	default:
