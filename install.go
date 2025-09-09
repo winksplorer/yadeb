@@ -168,8 +168,8 @@ func candidateInstall(pkgName, tag, downloadLink string, u *url.URL) error {
 	fmt.Println(doneMsg)
 
 	// apt
-	fmt.Print("Starting APT...\n\n")
-	if err := runApt("install", path); err != nil {
+	fmt.Printf("Starting APT (%s)...\n\n", os.Args[1])
+	if err := runApt(os.Args[1], path); err != nil {
 		// if apt fails then unmark the package
 		fmt.Printf("Removing installation mark for %s...", pkgName)
 		if err := unmarkAsInstalled(u.String()); err != nil {

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
 	"syscall"
 )
@@ -49,8 +50,8 @@ func cmdRemove(links []string) int {
 	fmt.Println(doneMsg)
 
 	// actually uninstall
-	fmt.Print("Starting APT...\n\n")
-	if err := runApt("remove", p.Package); err != nil {
+	fmt.Printf("Starting APT (%s)...\n\n", os.Args[1])
+	if err := runApt(os.Args[1], p.Package); err != nil {
 		ansiError("Couldn't run apt:", err.Error())
 		return 1
 	}
