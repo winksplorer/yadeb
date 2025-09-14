@@ -21,7 +21,7 @@ func cmdUpgrade(links []string) int {
 	}
 
 	if syscall.Geteuid() != 0 {
-		ansiError("Installation requires root privileges")
+		ansiError("Upgrading requires root privileges")
 		return 2
 	}
 
@@ -131,7 +131,7 @@ func cmdUpgrade(links []string) int {
 // the upgrade command
 func cmdUpgradeAll() int {
 	if syscall.Geteuid() != 0 {
-		ansiError("Installation requires root privileges")
+		ansiError("Upgrading requires root privileges")
 		return 2
 	}
 
