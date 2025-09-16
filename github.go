@@ -145,9 +145,5 @@ func githubFormatCandidates(json string, index int64) ([]string, error) {
 		return candidates, err
 	}
 
-	if len(candidates) != 1 {
-		installUserChoice(candidates)
-	}
-
 	return candidates, nil
 }

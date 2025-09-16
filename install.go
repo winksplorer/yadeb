@@ -134,6 +134,8 @@ func filterCandidates(candidates []string) ([]string, error) {
 
 	if len(candidates) == 0 {
 		return candidates, fmt.Errorf("no package files for %s", runtime.GOARCH)
+	} else if len(candidates) != 1 {
+		installUserChoice(candidates)
 	}
 
 	return candidates, nil
