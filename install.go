@@ -195,9 +195,14 @@ func installUserChoice(candidates []string) []string {
 	index := 0
 
 	slices.Sort(candidates)
+	displayCandidates := append([]string(nil), candidates...)
+
+	for i, v := range displayCandidates {
+		displayCandidates[i] = filepath.Base(v)
+	}
 
 	for !valid {
-		valid, index = numberedMenu(candidates)
+		valid, index = numberedMenu(displayCandidates)
 	}
 
 	wantedVal := candidates[index]
