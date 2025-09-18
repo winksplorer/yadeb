@@ -97,7 +97,7 @@ func cmdUpgrade(links []string) int {
 			return 1
 		}
 
-		tag, candidates, err = githubFindLatestRelease(releaseJson, cfg)
+		tag, candidates, err = githubFindLatestRelease(releaseJson, cfg, false)
 		if err != nil {
 			lnAnsiError(err.Error())
 			return 1
@@ -117,6 +117,10 @@ func cmdUpgrade(links []string) int {
 		Tag:          tag,
 		DownloadLink: candidates[0],
 		Url:          u,
+	}
+
+	if len(candidates) != 1 {
+		installUserChoice(candidates)
 	}
 
 	// downlad the remaining candidate
@@ -194,7 +198,7 @@ func cmdUpgradeAll() int {
 				continue
 			}
 
-			tag, candidates, err := githubFindLatestRelease(releaseJson, cfg)
+			tag, candidates, err := githubFindLatestRelease(releaseJson, cfg, false)
 			if err != nil {
 				lnAnsiError(err.Error())
 				return 1
@@ -203,6 +207,10 @@ func cmdUpgradeAll() int {
 			if p.InstalledTag == tag {
 				fmt.Fprintln(os.Stderr, u.String(), "is already at the latest version")
 				continue
+			}
+
+			if len(candidates) != 1 {
+				installUserChoice(candidates)
 			}
 
 			pii = append(pii, PackageToInstall{

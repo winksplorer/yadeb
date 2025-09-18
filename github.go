@@ -36,7 +36,7 @@ func githubGetCandidates(u *url.URL, tagFlag string, cfg *ini.File) ([]string, s
 
 	// go through releases
 	if tagFlag == "latest" {
-		tag, candidates, err = githubFindLatestRelease(releaseJson, cfg)
+		tag, candidates, err = githubFindLatestRelease(releaseJson, cfg, true)
 		if err != nil {
 			return nil, "", "", err
 		}
@@ -48,7 +48,7 @@ func githubGetCandidates(u *url.URL, tagFlag string, cfg *ini.File) ([]string, s
 
 		tag = tagFlag
 
-		candidates, err = githubFormatCandidates(releaseJson, index)
+		candidates, err = githubFormatCandidates(releaseJson, index, true)
 		if err != nil {
 			return nil, "", "", fmt.Errorf("release %s: %s", tag, err.Error())
 		}
@@ -84,7 +84,7 @@ func githubGetReleases(pkgName string, releaseDepth int) (string, error) {
 	return string(body), nil
 }
 
-func githubFindLatestRelease(json string, cfg *ini.File) (string, []string, error) {
+func githubFindLatestRelease(json string, cfg *ini.File, installMode bool) (string, []string, error) {
 	for i := range gjson.Get(json, "#").Int() {
 		// get tag
 		tag := gjson.Get(json, fmt.Sprintf("%d.tag_name", i)).String()
@@ -94,7 +94,7 @@ func githubFindLatestRelease(json string, cfg *ini.File) (string, []string, erro
 			continue
 		}
 
-		candidates, err := githubFormatCandidates(json, i)
+		candidates, err := githubFormatCandidates(json, i, installMode)
 		if err != nil {
 			fmt.Printf("Skipping release %s: \033[91m%s\033[0m\n", tag, err.Error())
 			continue
@@ -131,7 +131,7 @@ func githubTagSearch(json, tag string) (bool, int64) {
 	return false, 0
 }
 
-func githubFormatCandidates(json string, index int64) ([]string, error) {
+func githubFormatCandidates(json string, index int64, installMode bool) ([]string, error) {
 	// check if any assets are available
 	if gjson.Get(json, fmt.Sprintf("%d.assets.#", index)).Int() == 0 {
 		return nil, fmt.Errorf("no assets available")
@@ -139,7 +139,7 @@ func githubFormatCandidates(json string, index int64) ([]string, error) {
 
 	// get and filter candidates (release files)
 	candidates := githubGetCandidatesFromRelease(json, index)
-	candidates, err := filterCandidates(candidates)
+	candidates, err := filterCandidates(candidates, installMode)
 
 	if err != nil {
 		return candidates, err

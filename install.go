@@ -101,7 +101,7 @@ func cmdInstall(links []string, tagFlag string) int {
 }
 
 // filters candidates from name
-func filterCandidates(candidates []string) ([]string, error) {
+func filterCandidates(candidates []string, installMode bool) ([]string, error) {
 	// .deb filtering
 	candidates = slices.DeleteFunc(candidates, func(v string) bool {
 		return !strings.HasSuffix(v, ".deb")
@@ -123,7 +123,10 @@ func filterCandidates(candidates []string) ([]string, error) {
 	}
 
 	if !archSpecific {
-		installUserChoice(candidates)
+		if installMode {
+			installUserChoice(candidates)
+		}
+
 		return candidates, nil
 	}
 
