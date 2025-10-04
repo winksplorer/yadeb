@@ -91,6 +91,10 @@ func cmdInstall(links []string, tagFlag string) int {
 		return 1
 	}
 
+	if len(candidates) != 1 {
+		installUserChoice(candidates)
+	}
+
 	// downlad the remaining candidate
 	if err := candidateInstall(pkgName, tag, candidates[0], u); err != nil {
 		ansiError(fmt.Sprintf("Couldn't install %s: %s", pkgName, err.Error()))
@@ -101,7 +105,7 @@ func cmdInstall(links []string, tagFlag string) int {
 }
 
 // filters candidates from name
-func filterCandidates(candidates []string, installMode bool) ([]string, error) {
+func filterCandidates(candidates []string) ([]string, error) {
 	// .deb filtering
 	candidates = slices.DeleteFunc(candidates, func(v string) bool {
 		return !strings.HasSuffix(v, ".deb")
@@ -123,10 +127,6 @@ func filterCandidates(candidates []string, installMode bool) ([]string, error) {
 	}
 
 	if !archSpecific {
-		if installMode {
-			installUserChoice(candidates)
-		}
-
 		return candidates, nil
 	}
 
@@ -137,8 +137,6 @@ func filterCandidates(candidates []string, installMode bool) ([]string, error) {
 
 	if len(candidates) == 0 {
 		return candidates, fmt.Errorf("no package files for %s", runtime.GOARCH)
-	} else if len(candidates) != 1 {
-		installUserChoice(candidates)
 	}
 
 	return candidates, nil

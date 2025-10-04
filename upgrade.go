@@ -95,7 +95,7 @@ func cmdUpgrade(links []string) int {
 			return 1
 		}
 
-		tag, candidates, err = githubFindLatestRelease(releaseJson, cfg, false)
+		tag, candidates, err = githubFindLatestValidRelease(releaseJson, cfg)
 		if err != nil {
 			lnAnsiError(err.Error())
 			return 1
@@ -111,6 +111,10 @@ func cmdUpgrade(links []string) int {
 	}
 
 	fmt.Printf(" \033[92mNew version available (%s)\033[0m\n", tag)
+
+	if len(candidates) != 1 {
+		installUserChoice(candidates)
+	}
 
 	pii := PackageToInstall{
 		Name:         pkgName,
@@ -203,7 +207,7 @@ func cmdUpgradeAll() int {
 				continue
 			}
 
-			tag, candidates, err = githubFindLatestRelease(releaseJson, cfg, false)
+			tag, candidates, err = githubFindLatestValidRelease(releaseJson, cfg)
 			if err != nil {
 				lnAnsiError(err.Error())
 				return 1

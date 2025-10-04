@@ -16,19 +16,6 @@ func githubGetCandidates(u *url.URL, tagFlag string, cfg *ini.File) ([]string, s
 	// get user and repo
 	pkgName, _ := strings.CutPrefix(u.Path, "/")
 
-	// get releases
-	fmt.Printf("Fetching releases from github.com/%s...", pkgName)
-	releaseJson, err := githubGetReleases(pkgName, cfg.Section("yadeb").Key("ReleaseDepth").MustInt(50))
-	if err != nil {
-		fmt.Println() // Yes, this is bad. Yes, you will see this a lot.
-		return nil, "", "", fmt.Errorf("couldn't fetch github releases: %s", err)
-	}
-	fmt.Println(doneMsg)
-
-	if gjson.Get(releaseJson, "#").Int() == 0 {
-		return nil, "", "", fmt.Errorf("requested package has no releases available")
-	}
-
 	var (
 		candidates []string
 		tag        string
@@ -36,19 +23,39 @@ func githubGetCandidates(u *url.URL, tagFlag string, cfg *ini.File) ([]string, s
 
 	// go through releases
 	if tagFlag == "latest" {
-		tag, candidates, err = githubFindLatestRelease(releaseJson, cfg, true)
+		// get releases
+		fmt.Printf("Fetching releases from github.com/%s...", pkgName)
+		releaseJson, err := githubGetReleases(pkgName, cfg.Section("yadeb").Key("ReleaseDepth").MustInt(50))
+		if err != nil {
+			fmt.Println() // Yes, this is bad. Yes, you will see this a lot.
+			return nil, "", "", fmt.Errorf("couldn't fetch github releases: %s", err)
+		}
+		fmt.Println(doneMsg)
+
+		if gjson.Get(releaseJson, "#").Int() == 0 {
+			return nil, "", "", fmt.Errorf("requested package has no releases available")
+		}
+
+		tag, candidates, err = githubFindLatestValidRelease(releaseJson, cfg)
 		if err != nil {
 			return nil, "", "", err
 		}
 	} else {
-		foundTag, index := githubTagSearch(releaseJson, tagFlag)
-		if !foundTag {
+		fmt.Printf("Fetching github.com/%s at release %s...", pkgName, tagFlag)
+		releaseJson, err := githubReleaseByTag(pkgName, tagFlag)
+		if err != nil {
+			fmt.Println()
+			return nil, "", "", fmt.Errorf("release %s: failed to fetch: %s", tagFlag, err.Error())
+		}
+		fmt.Println(doneMsg)
+
+		if gjson.Get(releaseJson, "status").String() == "404" {
 			return nil, "", "", fmt.Errorf("release %s: not found", tagFlag)
 		}
 
 		tag = tagFlag
 
-		candidates, err = githubFormatCandidates(releaseJson, index, true)
+		candidates, err = githubFormatCandidates(releaseJson, "assets")
 		if err != nil {
 			return nil, "", "", fmt.Errorf("release %s: %s", tag, err.Error())
 		}
@@ -57,9 +64,8 @@ func githubGetCandidates(u *url.URL, tagFlag string, cfg *ini.File) ([]string, s
 	return candidates, pkgName, tag, nil
 }
 
-// uses github api to get repo's releases
-func githubGetReleases(pkgName string, releaseDepth int) (string, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=%d", pkgName, releaseDepth), nil)
+func githubApiRequest(link string) (string, error) {
+	req, err := http.NewRequest("GET", link, nil)
 	if err != nil {
 		return "", err
 	}
@@ -84,7 +90,17 @@ func githubGetReleases(pkgName string, releaseDepth int) (string, error) {
 	return string(body), nil
 }
 
-func githubFindLatestRelease(json string, cfg *ini.File, installMode bool) (string, []string, error) {
+// uses github api to get repo's releases
+func githubGetReleases(pkgName string, releaseDepth int) (string, error) {
+	return githubApiRequest(fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=%d", pkgName, releaseDepth))
+}
+
+// gets a tag
+func githubReleaseByTag(pkgName, tag string) (string, error) {
+	return githubApiRequest(fmt.Sprintf("https://api.github.com/repos/%s/releases/tags/%s", pkgName, tag))
+}
+
+func githubFindLatestValidRelease(json string, cfg *ini.File) (string, []string, error) {
 	for i := range gjson.Get(json, "#").Int() {
 		// get tag
 		tag := gjson.Get(json, fmt.Sprintf("%d.tag_name", i)).String()
@@ -94,7 +110,7 @@ func githubFindLatestRelease(json string, cfg *ini.File, installMode bool) (stri
 			continue
 		}
 
-		candidates, err := githubFormatCandidates(json, i, installMode)
+		candidates, err := githubFormatCandidates(json, fmt.Sprintf("%d.assets", i))
 		if err != nil {
 			fmt.Printf("Skipping release %s: \033[91m%s\033[0m\n", tag, err.Error())
 			continue
@@ -107,39 +123,27 @@ func githubFindLatestRelease(json string, cfg *ini.File, installMode bool) (stri
 }
 
 // use githubGetReleases to get the json
-func githubGetCandidatesFromRelease(json string, release int64) []string {
-	assetCount := gjson.Get(json, fmt.Sprintf("%d.assets.#", release)).Int()
+func githubGetCandidatesFromRelease(json string, assetsPath string, assetCount int64) []string {
 	var candidates []string
 
 	for i := range assetCount {
-		assetPath := fmt.Sprintf("%d.assets.%d", release, i)
+		assetPath := fmt.Sprintf("%s.%d", assetsPath, i)
 		candidates = append(candidates, gjson.Get(json, assetPath+".browser_download_url").String())
 	}
 
 	return candidates
 }
 
-// return to caveman 2
-// returns: found, index
-func githubTagSearch(json, tag string) (bool, int64) {
-	for i := range gjson.Get(json, "#").Int() {
-		if tag == gjson.Get(json, fmt.Sprintf("%d.tag_name", i)).String() {
-			return true, i
-		}
-	}
+func githubFormatCandidates(json string, assetsPath string) ([]string, error) {
+	assetCount := gjson.Get(json, fmt.Sprintf("%s.#", assetsPath)).Int()
 
-	return false, 0
-}
-
-func githubFormatCandidates(json string, index int64, installMode bool) ([]string, error) {
-	// check if any assets are available
-	if gjson.Get(json, fmt.Sprintf("%d.assets.#", index)).Int() == 0 {
+	if assetCount == 0 {
 		return nil, fmt.Errorf("no assets available")
 	}
 
 	// get and filter candidates (release files)
-	candidates := githubGetCandidatesFromRelease(json, index)
-	candidates, err := filterCandidates(candidates, installMode)
+	candidates := githubGetCandidatesFromRelease(json, assetsPath, assetCount)
+	candidates, err := filterCandidates(candidates)
 
 	if err != nil {
 		return candidates, err
