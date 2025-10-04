@@ -17,11 +17,11 @@ func githubGetCandidates(u *url.URL, tagFlag string, cfg *ini.File) ([]string, s
 	pkgName, _ := strings.CutPrefix(u.Path, "/")
 
 	// get releases
-	fmt.Printf("Asking GitHub for releases on %s...", pkgName)
+	fmt.Printf("Fetching releases from github.com/%s...", pkgName)
 	releaseJson, err := githubGetReleases(pkgName, cfg.Section("yadeb").Key("ReleaseDepth").MustInt(50))
 	if err != nil {
 		fmt.Println() // Yes, this is bad. Yes, you will see this a lot.
-		return nil, "", "", fmt.Errorf("couldn't get github releases: %s", err)
+		return nil, "", "", fmt.Errorf("couldn't fetch github releases: %s", err)
 	}
 	fmt.Println(doneMsg)
 

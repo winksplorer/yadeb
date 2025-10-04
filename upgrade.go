@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net/url"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -84,13 +83,12 @@ func cmdUpgrade(links []string) int {
 		pkgName, _ := strings.CutPrefix(u.Path, "/")
 
 		// get releases
-		fmt.Printf("Asking GitHub for releases on %s...", pkgName)
+		fmt.Printf("Checking github.com/%s...", pkgName)
 		releaseJson, err := githubGetReleases(pkgName, cfg.Section("yadeb").Key("ReleaseDepth").MustInt(50))
 		if err != nil {
 			lnAnsiError("couldn't get github releases:", err.Error())
 			return 1
 		}
-		fmt.Println(doneMsg)
 
 		if gjson.Get(releaseJson, "#").Int() == 0 {
 			lnAnsiError("requested package has no releases available")
@@ -108,9 +106,11 @@ func cmdUpgrade(links []string) int {
 	}
 
 	if p.InstalledTag == tag {
-		fmt.Fprintln(os.Stderr, u.String(), "is already at the latest version")
+		fmt.Printf(" \033[92mAlready at latest (%s)\033[0m\n", tag)
 		return 0
 	}
+
+	fmt.Printf(" \033[92mNew version available (%s)\033[0m\n", tag)
 
 	pii := PackageToInstall{
 		Name:         pkgName,
@@ -178,51 +178,58 @@ func cmdUpgradeAll() int {
 			return 1
 		}
 
+		var (
+			candidates []string
+			pkgName    string
+			tag        string
+		)
+
 		// decide what to do based on domain
 		switch u.Host {
 		case "github.com":
 			// get user and repo
-			pkgName, _ := strings.CutPrefix(u.Path, "/")
+			pkgName, _ = strings.CutPrefix(u.Path, "/")
 
 			// get releases
-			fmt.Printf("Asking GitHub for releases on %s...", pkgName)
+			fmt.Printf("Checking github.com/%s...", pkgName)
 			releaseJson, err := githubGetReleases(pkgName, cfg.Section("yadeb").Key("ReleaseDepth").MustInt(50))
 			if err != nil {
 				lnAnsiError("couldn't get github releases:", err.Error())
 				return 1
 			}
-			fmt.Println(doneMsg)
 
 			if gjson.Get(releaseJson, "#").Int() == 0 {
 				lnAnsiError("requested package has no releases available")
 				continue
 			}
 
-			tag, candidates, err := githubFindLatestRelease(releaseJson, cfg, false)
+			tag, candidates, err = githubFindLatestRelease(releaseJson, cfg, false)
 			if err != nil {
 				lnAnsiError(err.Error())
 				return 1
 			}
-
-			if p.InstalledTag == tag {
-				fmt.Fprintln(os.Stderr, u.String(), "is already at the latest version")
-				continue
-			}
-
-			if len(candidates) != 1 {
-				installUserChoice(candidates)
-			}
-
-			pii = append(pii, PackageToInstall{
-				Name:         pkgName,
-				Tag:          tag,
-				DownloadLink: candidates[0],
-				Url:          u,
-			})
 		default:
 			ansiError("Unknown source domain:", u.Host)
 			return 2
 		}
+
+		if p.InstalledTag == tag {
+			fmt.Printf(" \033[92mAlready at latest (%s)\033[0m\n", tag)
+			continue
+		}
+
+		fmt.Printf(" \033[92mNew version available (%s)\033[0m\n", tag)
+
+		if len(candidates) != 1 {
+			installUserChoice(candidates)
+		}
+
+		pii = append(pii, PackageToInstall{
+			Name:         pkgName,
+			Tag:          tag,
+			DownloadLink: candidates[0],
+			Url:          u,
+		})
 	}
 
 	if len(pii) == 0 {
