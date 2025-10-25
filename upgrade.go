@@ -240,7 +240,7 @@ func cmdUpgradeAll() int {
 		return 0
 	}
 
-	// downlad the remaining candidate
+	// downlad the remaining candidates
 	if err := candidateUpgrade(pii...); err != nil {
 		ansiError(fmt.Sprintf("Couldn't upgrade everything: %s", err.Error()))
 		return 1
@@ -257,6 +257,8 @@ func candidateUpgrade(pkgs ...PackageToInstall) error {
 		return fmt.Errorf("couldn't create temp directory: %s", err)
 	}
 
+	var paths []string
+
 	for _, p := range pkgs {
 		path := fmt.Sprintf("%s/%s", tempDir, filepath.Base(p.DownloadLink))
 
@@ -268,13 +270,17 @@ func candidateUpgrade(pkgs ...PackageToInstall) error {
 		}
 		fmt.Println(doneMsg)
 
-		// apt
-		fmt.Print("Starting APT (install)...\n\n")
-		if err := runApt("install", "-y", path); err != nil {
-			ansiError("Couldn't run apt: %s", err.Error())
-			continue
-		}
+		paths = append(paths, path)
+	}
 
+	// apt
+	fmt.Print("Starting APT (install)...\n\n")
+	if err := runApt(append([]string{"install", "-y"}, paths...)...); err != nil {
+		ansiError("Couldn't run apt: %s", err.Error())
+		return cleanupDir(tempDir)
+	}
+
+	for _, p := range pkgs {
 		// mark
 		fmt.Printf("Marking %s as updated...", p.Name)
 		if err := updatePackageMark(p.Url.String(), p.Tag); err != nil {
